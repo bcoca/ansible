@@ -43,9 +43,9 @@ gen_egg_info()
 {
     python setup.py egg_info
     if [ -e "$PREFIX_PYTHONPATH/ansible.egg-info" ] ; then
-        rm -r "$PREFIX_PYTHONPATH/ansible.egg-info"
+        rm -r $1 "$PREFIX_PYTHONPATH/ansible.egg-info"
     fi
-    mv "ansible.egg-info" "$PREFIX_PYTHONPATH"
+    mv $1 "ansible.egg-info" "$PREFIX_PYTHONPATH"
 }
 
 if [ "$ANSIBLE_HOME" != "$PWD" ] ; then
@@ -55,7 +55,7 @@ else
 fi
 cd "$ANSIBLE_HOME"
 if [ "$verbosity" = silent ] ; then
-    gen_egg_info > /dev/null 2>&1
+    gen_egg_info -f > /dev/null 2>&1
 else
     gen_egg_info
 fi
