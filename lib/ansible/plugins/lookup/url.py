@@ -33,6 +33,7 @@ class LookupModule(LookupBase):
             terms = [ terms ]
 
         validate_certs = kwargs.get('validate_certs', True)
+        split_char = kwargs.get('split', '/n')
 
         ret = []
         for term in terms:
@@ -47,6 +48,6 @@ class LookupModule(LookupBase):
             except ConnectionError as e:
                 raise AnsibleError("Error connecting to %s: %s" % (term, str(e)))
 
-            for line in response.read().splitlines():
+            for line in response.read().split(split_char):
                 ret.append(to_unicode(line))
         return ret

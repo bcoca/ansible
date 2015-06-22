@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import select
 import fcntl
+import pty
 
 import ansible.constants as C
 
@@ -59,10 +60,38 @@ class Connection(ConnectionBase):
             raise AnsibleError("Internal Error: this module does not support optimized module pipelining")
         executable = C.DEFAULT_EXECUTABLE.split()[0] if C.DEFAULT_EXECUTABLE else None
 
+        mystdout=subprocess.PIPE
+        mydtderr=subprocess.PIPE
         if sudoable:
             cmd, self.prompt, self.success_key = self._connection_info.make_become_cmd(cmd)
+            if self.prompt  and self._connection_info.become_method == 'su':
+                (master,slave) = pty.openpty()
+                mystdout=slave
+                mystderr=slave
 
+            ignore = '''
+                import os
+                import pty
+                import select
+                import subprocess
+                import sys
+
+                (master,slave) = pty.openpty()
+                process = subprocess.Popen('su - testing -c "whoami; sleep 5; echo ok"', stdin=subprocess.PIPE, stdout=slave, stderr=slave, close_fds=True, shell=True)
+                output = ''
+                while process.poll() is None:
+                    rlist, wlist, xlist = select.select([master], [], [], 0.25)
+                    for f in rlist:
+                        data = os.read(f, 1000)
+                        if not data:
+                            break
+                        sys.stdout.write(data)
+                        sys.stdout.flush()
+                        output += data
+
+            '''
         self._display.vvv("{0} EXEC {1}".format(self._connection_info.remote_addr, cmd))
+
         # FIXME: cwd= needs to be set to the basedir of the playbook
         debug("opening command with Popen()")
         p = subprocess.Popen(
@@ -70,21 +99,30 @@ class Connection(ConnectionBase):
             shell=isinstance(cmd, basestring),
             executable=executable, #cwd=...
             stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=mystdout,
+            stderr=mydtderr,
         )
+        try:
+            rfiles = [master]
+        except UnboundLocalError:
+            rfiles = [p.stdout, p.stderr]
+
         debug("done running command with Popen()")
 
         if self.prompt  and self._connection_info.become_pass:
-            fcntl.fcntl(p.stdout, fcntl.F_SETFL, fcntl.fcntl(p.stdout, fcntl.F_GETFL) | os.O_NONBLOCK)
-            fcntl.fcntl(p.stderr, fcntl.F_SETFL, fcntl.fcntl(p.stderr, fcntl.F_GETFL) | os.O_NONBLOCK)
+            for xfile in rfiles:
+                fcntl.fcntl(xfile, fcntl.F_SETFL, fcntl.fcntl(xfile, fcntl.F_GETFL) | os.O_NONBLOCK)
             become_output = ''
             while not self.check_become_success(become_output) and not self.check_password_prompt(become_output):
 
-                rfd, wfd, efd = select.select([p.stdout, p.stderr], [], [p.stdout, p.stderr], self._connection_info.timeout)
-                if p.stdout in rfd:
+                try:
+                    rfd, wfd, efd = select.select([master], [], [], self._connection_info.timeout)
+                except UnboundLocalError:
+                    rfd, wfd, efd = select.select([p.stdout, p.stderr], [], [p.stdout, p.stderr], self._connection_info.timeout)
+
+                if mystdout in rfd:
                     chunk = p.stdout.read()
-                elif p.stderr in rfd:
+                elif mystderr in rfd:
                     chunk = p.stderr.read()
                 else:
                     stdout, stderr = p.communicate()
@@ -93,10 +131,12 @@ class Connection(ConnectionBase):
                     stdout, stderr = p.communicate()
                     raise AnsibleError('privilege output closed while waiting for password prompt:\n' + become_output)
                 become_output += chunk
+                import q
+                q(chunk)
             if not self.check_become_success(become_output):
                 p.stdin.write(self._connection_info.become_pass + '\n')
-            fcntl.fcntl(p.stdout, fcntl.F_SETFL, fcntl.fcntl(p.stdout, fcntl.F_GETFL) & ~os.O_NONBLOCK)
-            fcntl.fcntl(p.stderr, fcntl.F_SETFL, fcntl.fcntl(p.stderr, fcntl.F_GETFL) & ~os.O_NONBLOCK)
+            for xfile in rfiles:
+                fcntl.fcntl(xfile, fcntl.F_SETFL, fcntl.fcntl(xfile, fcntl.F_GETFL) & ~os.O_NONBLOCK)
 
         debug("getting output with communicate()")
         stdout, stderr = p.communicate()
