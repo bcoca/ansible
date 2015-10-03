@@ -48,13 +48,16 @@ class ActionModule(ActionBase):
         if port:
             self._task.args['ansible_ssh_port'] = port
 
-        groups = self._task.args.get('groupname', self._task.args.get('groups', self._task.args.get('group', ''))) 
+        groups = self._task.args.get('groupname', self._task.args.get('groups', self._task.args.get('group', [])))
+
+        if not isinstance(group, list):
+            groups = groups.split(",")
+
         # add it to the group if that was specified
         new_groups = []
-        if groups:
-            for group_name in groups.split(","):
-                if group_name not in new_groups:
-                    new_groups.append(group_name.strip())
+        for group_name in groups:
+            if group_name not in new_groups:
+                new_groups.append(group_name.strip())
 
         # Add any variables to the new_host
         host_vars = dict()
