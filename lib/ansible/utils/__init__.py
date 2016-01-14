@@ -800,7 +800,7 @@ def _validate_both_dicts(a, b):
 
     if not (isinstance(a, dict) and isinstance(b, dict)):
         raise errors.AnsibleError(
-            "failed to combine variables, expected dicts but got a '%s' and a '%s'" % (type(a).__name__, type(b).__name__)
+            "failed to combine variables, expected dicts but got a '%s' and a '%s': \n%s\n%s" % (type(a).__name__, type(b).__name__, json.dumps(a), json.dumps(b))
         )
 
 def merge_hash(a, b):
@@ -1486,11 +1486,10 @@ def listify_lookup_plugin_terms(terms, basedir, inject):
 
 def combine_vars(a, b):
 
-    _validate_both_dicts(a, b)
-
     if C.DEFAULT_HASH_BEHAVIOUR == "merge":
         return merge_hash(a, b)
     else:
+        _validate_both_dicts(a, b)
         return dict(a.items() + b.items())
 
 def random_password(length=20, chars=C.DEFAULT_PASSWORD_CHARS):
