@@ -498,7 +498,7 @@ class PlayContext(Base):
                     return bool(SU_PROMPT_LOCALIZATIONS_RE.match(data))
                 prompt = detect_su_prompt
 
-                becomecmd = '%s %s %s -c %s' % (exe, flags, self.become_user, pipes.quote('%s -c %s' % (executable, success_cmd)))
+                becomecmd = '%s %s %s %s' % (exe, flags, self.become_user, pipes.quote('%s -c %s' % (executable, success_cmd)))
 
             elif self.become_method == 'pbrun':
 
