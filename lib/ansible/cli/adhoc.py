@@ -161,7 +161,7 @@ class AdHocCLI(CLI):
             raise AnsibleOptionsError(err)
 
         # Avoid modules that don't work with ad-hoc
-        if self.options.module_name in ('include', 'include_role'):
+        if self.options.module_name in C.NON_ADHOC_MODULES:
             raise AnsibleOptionsError("'%s' is not a valid action for ad-hoc commands" % self.options.module_name)
 
         # dynamically load any plugins from the playbook directory
