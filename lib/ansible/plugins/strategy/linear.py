@@ -254,7 +254,7 @@ class StrategyModule(StrategyBase):
                                 display.debug("templating failed for some reason")
                                 pass
                             display.debug("here goes the callback...")
-                            self._tqm.send_callback('v2_playbook_on_task_start', task, is_conditional=False)
+                            display.send_callback('v2_playbook_on_task_start', task, is_conditional=False)
                             task.name = saved_name
                             callback_sent = True
                             display.debug("sending task start callback")
@@ -411,14 +411,14 @@ class StrategyModule(StrategyBase):
                             if host.name not in failed_hosts:
                                 self._tqm._failed_hosts[host.name] = True
                                 iterator.mark_host_failed(host)
-                        self._tqm.send_callback('v2_playbook_on_no_hosts_remaining')
+                        display.send_callback('v2_playbook_on_no_hosts_remaining')
                         result |= self._tqm.RUN_FAILED_BREAK_PLAY
                 display.debug("done checking for max_fail_percentage")
 
                 display.debug("checking to see if all hosts have failed and the running result is not ok")
                 if result != self._tqm.RUN_OK and len(self._tqm._failed_hosts) >= len(hosts_left):
                     display.debug("^ not ok, so returning result now")
-                    self._tqm.send_callback('v2_playbook_on_no_hosts_remaining')
+                    display.send_callback('v2_playbook_on_no_hosts_remaining')
                     return result
                 display.debug("done checking to see if all hosts have failed")
 

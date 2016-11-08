@@ -65,8 +65,9 @@ b_COW_PATHS = (b"/usr/bin/cowsay",
               )
 class Display:
 
-    def __init__(self, verbosity=0):
+    def __init__(self, verbosity=0, callback_plugins=None):
 
+        self._callbacks = []
         self.columns = None
         self.verbosity = verbosity
 
@@ -74,6 +75,11 @@ class Display:
         self._deprecations = {}
         self._warns        = {}
         self._errors       = {}
+
+        if callback_plugins is None:
+            self._callback_plugins = []
+        else:
+            self._callback_plugins = callback_plugins
 
         self.b_cowsay = None
         self.noncow = C.ANSIBLE_COW_SELECTION
@@ -333,3 +339,51 @@ class Display:
         else:
             tty_size = 0
         self.columns = max(79, tty_size - 1)
+
+    def add_callbacks(self, callbacks):
+        if isinstance(callbacks, list):
+            self._callbacks.extend(callbacks)
+        else:
+            self._callbacks.append(callbacks)
+
+    def send_callback(self, method_name, *args, **kwargs):
+        for callback_plugin in self._callback_plugins:
+            # a plugin that set self.disabled to True will not be called
+            # see osx_say.py example for such a plugin
+            if getattr(callback_plugin, 'disabled', False):
+                continue
+
+            # try to find v2 method, fallback to v1 method, ignore callback if no method found
+            methods = []
+            for possible in [method_name, 'v2_on_any']:
+                gotit = getattr(callback_plugin, possible, None)
+                if gotit is None:
+                    gotit = getattr(callback_plugin, possible.replace('v2_',''), None)
+                if gotit is not None:
+                    methods.append(gotit)
+
+            for method in methods:
+                try:
+                    # Previously, the `v2_playbook_on_start` callback API did not accept
+                    # any arguments. In recent versions of the v2 callback API, the play-
+                    # book that started execution is given. In order to support both of
+                    # these method signatures, we need to use this `inspect` hack to send
+                    # no arguments to the methods that don't accept them. This way, we can
+                    # not break backwards compatibility until that API is deprecated.
+                    # FIXME: target for removal and revert to the original code here after a year (2017-01-14)
+                    if method_name == 'v2_playbook_on_start':
+                        import inspect
+                        argspec = inspect.getargspec(method)
+                        if argspec.args == ['self']:
+                            method()
+                        else:
+                            method(*args, **kwargs)
+                    else:
+                        method(*args, **kwargs)
+                except Exception as e:
+                    # TODO: add config toggle to make this fatal or not?
+                    self.warning(u"Failure using method (%s) in callback plugin (%s): %s" % (to_text(method_name), to_text(callback_plugin), to_text(e)))
+                    from traceback import format_tb
+                    from sys import exc_info
+                    self.debug('Callback Exception: \n' + ' '.join(format_tb(exc_info()[2])))
+

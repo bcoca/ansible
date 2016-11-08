@@ -103,6 +103,11 @@ class PlaybookCLI(CLI):
             if not (os.path.isfile(playbook) or stat.S_ISFIFO(os.stat(playbook).st_mode)):
                 raise AnsibleError("the playbook: %s does not appear to be a file" % playbook)
 
+        #FIXME: add playbook dirs to callback plugin search
+        # setup callbacks
+        self.load_callbacks()
+        display.add_callbacks(self._callback_plugins)
+
         # don't deal with privilege escalation or passwords when we don't need to
         if not self.options.listhosts and not self.options.listtasks and not self.options.listtags and not self.options.syntax:
             self.normalize_become_options()
@@ -159,6 +164,7 @@ class PlaybookCLI(CLI):
         if isinstance(results, list):
             for p in results:
 
+                #TODO: move to callback methods
                 display.display('\nplaybook: %s' % p['playbook'])
                 for idx, play in enumerate(p['plays']):
                     msg = "\n  play #%d (%s): %s" % (idx + 1, ','.join(play.hosts), play.name)

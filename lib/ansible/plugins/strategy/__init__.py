@@ -41,7 +41,8 @@ from ansible.playbook.task_include import TaskInclude
 from ansible.playbook.role_include import IncludeRole
 from ansible.plugins import action_loader, connection_loader, filter_loader, lookup_loader, module_loader, test_loader
 from ansible.template import Templar
-from ansible.vars import combine_vars, strip_internal_keys
+from ansible.vars import combine_vars
+from ansible.utils.vars import strip_internal_keys
 from ansible.module_utils._text import to_text
 
 
@@ -311,18 +312,18 @@ class StrategyBase:
 
             # send callbacks for 'non final' results
             if '_ansible_retry' in task_result._result:
-                self._tqm.send_callback('v2_runner_retry', task_result)
+                display.send_callback('v2_runner_retry', task_result)
                 continue
             elif '_ansible_item_result' in task_result._result:
                 if task_result.is_failed() or task_result.is_unreachable():
-                    self._tqm.send_callback('v2_runner_item_on_failed', task_result)
+                    display.send_callback('v2_runner_item_on_failed', task_result)
                 elif task_result.is_skipped():
-                    self._tqm.send_callback('v2_runner_item_on_skipped', task_result)
+                    display.send_callback('v2_runner_item_on_skipped', task_result)
                 else:
                     if 'diff' in task_result._result:
                         if self._diff:
-                            self._tqm.send_callback('v2_on_file_diff', task_result)
-                    self._tqm.send_callback('v2_runner_item_on_ok', task_result)
+                            display.send_callback('v2_on_file_diff', task_result)
+                    display.send_callback('v2_runner_item_on_ok', task_result)
                 continue
 
             if original_task.register:
@@ -377,15 +378,15 @@ class StrategyBase:
                     self._tqm._stats.increment('ok', original_host.name)
                     if 'changed' in task_result._result and task_result._result['changed']:
                         self._tqm._stats.increment('changed', original_host.name)
-                self._tqm.send_callback('v2_runner_on_failed', task_result, ignore_errors=original_task.ignore_errors)
+                display.send_callback('v2_runner_on_failed', task_result, ignore_errors=original_task.ignore_errors)
             elif task_result.is_unreachable():
                 self._tqm._unreachable_hosts[original_host.name] = True
                 iterator._play._removed_hosts.append(original_host.name)
                 self._tqm._stats.increment('dark', original_host.name)
-                self._tqm.send_callback('v2_runner_on_unreachable', task_result)
+                display.send_callback('v2_runner_on_unreachable', task_result)
             elif task_result.is_skipped():
                 self._tqm._stats.increment('skipped', original_host.name)
-                self._tqm.send_callback('v2_runner_on_skipped', task_result)
+                display.send_callback('v2_runner_on_skipped', task_result)
             else:
                 role_ran = True
 
@@ -503,7 +504,7 @@ class StrategyBase:
 
                 if 'diff' in task_result._result:
                     if self._diff:
-                        self._tqm.send_callback('v2_on_file_diff', task_result)
+                        display.send_callback('v2_on_file_diff', task_result)
 
                 if original_task.action not in ['include', 'include_role']:
                     self._tqm._stats.increment('ok', original_host.name)
@@ -511,7 +512,7 @@ class StrategyBase:
                         self._tqm._stats.increment('changed', original_host.name)
 
                 # finally, send the ok for this task
-                self._tqm.send_callback('v2_runner_on_ok', task_result)
+                display.send_callback('v2_runner_on_ok', task_result)
 
             self._pending_results -= 1
             if original_host.name in self._blocked_hosts:
@@ -699,11 +700,11 @@ class StrategyBase:
                 iterator.mark_host_failed(host)
                 self._tqm._failed_hosts[host.name] = True
                 self._tqm._stats.increment('failures', host.name)
-                self._tqm.send_callback('v2_runner_on_failed', tr)
+                display.send_callback('v2_runner_on_failed', tr)
             return []
 
         # finally, send the callback and return the list of blocks loaded
-        self._tqm.send_callback('v2_playbook_on_include', included_file)
+        display.send_callback('v2_playbook_on_include', included_file)
         display.debug("done processing included file")
         return block_list
 
@@ -729,12 +730,12 @@ class StrategyBase:
 
         # FIXME: need to use iterator.get_failed_hosts() instead?
         #if not len(self.get_hosts_remaining(iterator._play)):
-        #    self._tqm.send_callback('v2_playbook_on_no_hosts_remaining')
+        #    display.send_callback('v2_playbook_on_no_hosts_remaining')
         #    result = False
         #    break
         saved_name = handler.name
         handler.name = handler_name
-        self._tqm.send_callback('v2_playbook_on_handler_task_start', handler)
+        display.send_callback('v2_playbook_on_handler_task_start', handler)
         handler.name = saved_name
 
         if notified_hosts is None:

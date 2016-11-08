@@ -65,7 +65,7 @@ class TaskQueueManager:
     RUN_FAILED_BREAK_PLAY = 8
     RUN_UNKNOWN_ERROR     = 255
 
-    def __init__(self, inventory, variable_manager, loader, options, passwords, stdout_callback=None, run_additional_callbacks=True, run_tree=False):
+    def __init__(self, inventory, variable_manager, loader, options, passwords, callbacks=None ):
 
         self._inventory        = inventory
         self._variable_manager = variable_manager
@@ -73,13 +73,12 @@ class TaskQueueManager:
         self._options          = options
         self._stats            = AggregateStats()
         self.passwords         = passwords
-        self._stdout_callback  = stdout_callback
-        self._run_additional_callbacks = run_additional_callbacks
-        self._run_tree         = run_tree
-
-        self._callbacks_loaded = False
-        self._callback_plugins = []
         self._start_at_done    = False
+
+        if callbacks is None:
+            self._callbacks = []
+        else:
+            self.callbacks = callbacks
 
         # make sure the module path (if specified) is parsed and
         # added to the module_loader object
@@ -156,53 +155,6 @@ class TaskQueueManager:
                     else:
                         self._listening_handlers[listener].append(handler._uuid)
 
-    def load_callbacks(self):
-        '''
-        Loads all available callbacks, with the exception of those which
-        utilize the CALLBACK_TYPE option. When CALLBACK_TYPE is set to 'stdout',
-        only one such callback plugin will be loaded.
-        '''
-
-        if self._callbacks_loaded:
-            return
-
-        stdout_callback_loaded = False
-        if self._stdout_callback is None:
-            self._stdout_callback = C.DEFAULT_STDOUT_CALLBACK
-
-        if isinstance(self._stdout_callback, CallbackBase):
-            stdout_callback_loaded = True
-        elif isinstance(self._stdout_callback, string_types):
-            if self._stdout_callback not in callback_loader:
-                raise AnsibleError("Invalid callback for stdout specified: %s" % self._stdout_callback)
-            else:
-                self._stdout_callback = callback_loader.get(self._stdout_callback)
-                stdout_callback_loaded = True
-        else:
-            raise AnsibleError("callback must be an instance of CallbackBase or the name of a callback plugin")
-
-        for callback_plugin in callback_loader.all(class_only=True):
-            if hasattr(callback_plugin, 'CALLBACK_VERSION') and callback_plugin.CALLBACK_VERSION >= 2.0:
-                # we only allow one callback of type 'stdout' to be loaded, so check
-                # the name of the current plugin and type to see if we need to skip
-                # loading this callback plugin
-                callback_type = getattr(callback_plugin, 'CALLBACK_TYPE', None)
-                callback_needs_whitelist  = getattr(callback_plugin, 'CALLBACK_NEEDS_WHITELIST', False)
-                (callback_name, _) = os.path.splitext(os.path.basename(callback_plugin._original_path))
-                if callback_type == 'stdout':
-                    if callback_name != self._stdout_callback or stdout_callback_loaded:
-                        continue
-                    stdout_callback_loaded = True
-                elif callback_name == 'tree' and self._run_tree:
-                    pass
-                elif not self._run_additional_callbacks or (callback_needs_whitelist and (
-                        C.DEFAULT_CALLBACK_WHITELIST is None or callback_name not in C.DEFAULT_CALLBACK_WHITELIST)):
-                    continue
-
-            self._callback_plugins.append(callback_plugin())
-
-        self._callbacks_loaded = True
-
     def run(self, play):
         '''
         Iterates over the roles/tasks in a play, using the given (or default)
@@ -211,9 +163,6 @@ class TaskQueueManager:
         a given task (meaning no hosts move on to the next task until all hosts
         are done with the current task).
         '''
-
-        if not self._callbacks_loaded:
-            self.load_callbacks()
 
         all_vars = self._variable_manager.get_vars(loader=self._loader, play=play)
         templar = Templar(loader=self._loader, variables=all_vars)
@@ -245,11 +194,11 @@ class TaskQueueManager:
         self._initialize_processes(min(contenders))
 
         play_context = PlayContext(new_play, self._options, self.passwords, self._connection_lockfile.fileno())
-        for callback_plugin in self._callback_plugins:
+        for callback_plugin in self._callbacks:
             if hasattr(callback_plugin, 'set_play_context'):
                 callback_plugin.set_play_context(play_context)
 
-        self.send_callback('v2_playbook_on_play_start', new_play)
+        display.send_callback('v2_playbook_on_play_start', new_play)
 
         # initialize the shared dictionary containing the notified handlers
         self._initialize_notified_handlers(new_play)
@@ -342,43 +291,3 @@ class TaskQueueManager:
                     defunct = True
         return defunct
 
-    def send_callback(self, method_name, *args, **kwargs):
-        for callback_plugin in [self._stdout_callback] + self._callback_plugins:
-            # a plugin that set self.disabled to True will not be called
-            # see osx_say.py example for such a plugin
-            if getattr(callback_plugin, 'disabled', False):
-                continue
-
-            # try to find v2 method, fallback to v1 method, ignore callback if no method found
-            methods = []
-            for possible in [method_name, 'v2_on_any']:
-                gotit = getattr(callback_plugin, possible, None)
-                if gotit is None:
-                    gotit = getattr(callback_plugin, possible.replace('v2_',''), None)
-                if gotit is not None:
-                    methods.append(gotit)
-
-            for method in methods:
-                try:
-                    # Previously, the `v2_playbook_on_start` callback API did not accept
-                    # any arguments. In recent versions of the v2 callback API, the play-
-                    # book that started execution is given. In order to support both of
-                    # these method signatures, we need to use this `inspect` hack to send
-                    # no arguments to the methods that don't accept them. This way, we can
-                    # not break backwards compatibility until that API is deprecated.
-                    # FIXME: target for removal and revert to the original code here after a year (2017-01-14)
-                    if method_name == 'v2_playbook_on_start':
-                        import inspect
-                        argspec = inspect.getargspec(method)
-                        if argspec.args == ['self']:
-                            method()
-                        else:
-                            method(*args, **kwargs)
-                    else:
-                        method(*args, **kwargs)
-                except Exception as e:
-                    # TODO: add config toggle to make this fatal or not?
-                    display.warning(u"Failure using method (%s) in callback plugin (%s): %s" % (to_text(method_name), to_text(callback_plugin), to_text(e)))
-                    from traceback import format_tb
-                    from sys import exc_info
-                    display.debug('Callback Exception: \n' + ' '.join(format_tb(exc_info()[2])))

@@ -85,9 +85,7 @@ class PlaybookExecutor:
                     entry = {'playbook': playbook_path}
                     entry['plays'] = []
                 else:
-                    # make sure the tqm has callbacks loaded
-                    self._tqm.load_callbacks()
-                    self._tqm.send_callback('v2_playbook_on_start', pb)
+                    display.send_callback('v2_playbook_on_start', pb)
 
                 i = 1
                 plays = pb.get_plays()
@@ -115,7 +113,7 @@ class PlaybookExecutor:
 
                             if vname not in self._variable_manager.extra_vars:
                                 if self._tqm:
-                                    self._tqm.send_callback('v2_playbook_on_vars_prompt', vname, private, prompt, encrypt, confirm, salt_size, salt, default)
+                                    display.send_callback('v2_playbook_on_vars_prompt', vname, private, prompt, encrypt, confirm, salt_size, salt, default)
                                     play.vars[vname] = display.do_var_prompt(vname, private, prompt, encrypt, confirm, salt_size, salt, default)
                                 else:  # we are either in --list-<option> or syntax check
                                     play.vars[vname] = default
@@ -144,8 +142,8 @@ class PlaybookExecutor:
                         # we are actually running plays
                         for batch in self._get_serialized_batches(new_play):
                             if len(batch) == 0:
-                                self._tqm.send_callback('v2_playbook_on_play_start', new_play)
-                                self._tqm.send_callback('v2_playbook_on_no_hosts_matched')
+                                display.send_callback('v2_playbook_on_play_start', new_play)
+                                display.send_callback('v2_playbook_on_no_hosts_matched')
                                 break
 
                             # restrict the inventory to the hosts in the serialized batch
@@ -204,7 +202,7 @@ class PlaybookExecutor:
                             if self._generate_retry_inventory(filename, retries):
                                 display.display("\tto retry, use: --limit @%s\n" % filename)
 
-                    self._tqm.send_callback('v2_playbook_on_stats', self._tqm._stats)
+                    display.send_callback('v2_playbook_on_stats', self._tqm._stats)
 
                 # if the last result wasn't zero, break out of the playbook file name loop
                 if result != 0:

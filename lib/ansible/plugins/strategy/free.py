@@ -63,7 +63,7 @@ class StrategyModule(StrategyBase):
 
             hosts_left = [host for host in self._inventory.get_hosts(iterator._play.hosts) if host.name not in self._tqm._unreachable_hosts]
             if len(hosts_left) == 0:
-                self._tqm.send_callback('v2_playbook_on_no_hosts_remaining')
+                display.send_callback('v2_playbook_on_no_hosts_remaining')
                 result = False
                 break
 
@@ -146,7 +146,7 @@ class StrategyModule(StrategyBase):
                                 if task.any_errors_fatal:
                                     display.warning("Using any_errors_fatal with the free strategy is not supported,"
                                             " as tasks are executed independently on each host")
-                                self._tqm.send_callback('v2_playbook_on_task_start', task, is_conditional=False)
+                                display.send_callback('v2_playbook_on_task_start', task, is_conditional=False)
                                 self._queue_task(host, task, task_vars, play_context)
                                 del task_vars
                     else:

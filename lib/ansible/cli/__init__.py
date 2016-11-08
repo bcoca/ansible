@@ -28,15 +28,16 @@ import time
 import yaml
 import re
 import getpass
-import signal
 import subprocess
 from abc import ABCMeta, abstractmethod
 
 from ansible.release import __version__
 from ansible import constants as C
-from ansible.compat.six import with_metaclass
+from ansible.compat.six import with_metaclass, string_types
 from ansible.errors import AnsibleError, AnsibleOptionsError
 from ansible.module_utils._text import to_bytes, to_text
+from ansible.plugins import callback_loader
+from ansible.plugins.callback import CallbackBase
 
 try:
     from __main__ import display
@@ -78,6 +79,7 @@ class InvalidOptsParser(SortedOptParser):
                                  epilog=parser.epilog)
         self.version=parser.version
 
+
     def _process_long_opt(self, rargs, values):
         try:
             optparse.OptionParser._process_long_opt(self, rargs, values)
@@ -116,6 +118,12 @@ class CLI(with_metaclass(ABCMeta, object)):
         self.parser = None
         self.action = None
         self.callback = callback
+
+        self._stdout_callback  = None
+        self._callbacks_loaded = False
+        self._callback_plugins = []
+        self._run_additional_callbacks = False
+        self._run_tree = False
 
     def set_action(self):
         """
@@ -649,9 +657,55 @@ class CLI(with_metaclass(ABCMeta, object)):
             data = getattr(self.options, k)
         except:
             return defval
-        # FIXME: Can this be removed if cli and/or constants ensures it's a
-        # list?
+        # FIXME: Can this be removed if cli and/or constants ensures it's a list?
         if k == "roles_path":
             if os.pathsep in data:
                 data = data.split(os.pathsep)[0]
         return data
+
+    def load_callbacks(self):
+        '''
+        Loads all available callbacks, with the exception of those which utilize the CALLBACK_TYPE option.
+        When CALLBACK_TYPE is set to 'stdout', only one such callback plugin will be loaded.
+        '''
+
+        if self._callbacks_loaded:
+            return
+
+        stdout_callback_loaded = False
+        if self._stdout_callback is None:
+            self._stdout_callback = C.DEFAULT_STDOUT_CALLBACK
+
+        if isinstance(self._stdout_callback, CallbackBase):
+            stdout_callback_loaded = True
+        elif isinstance(self._stdout_callback, string_types):
+            if self._stdout_callback not in callback_loader:
+                raise AnsibleError("Invalid callback for stdout specified: %s" % self._stdout_callback)
+            else:
+                self._stdout_callback = callback_loader.get(self._stdout_callback)
+                stdout_callback_loaded = True
+        else:
+            raise AnsibleError("callback must be an instance of CallbackBase or the name of a callback plugin")
+
+        for callback_plugin in callback_loader.all(class_only=True):
+            if hasattr(callback_plugin, 'CALLBACK_VERSION') and callback_plugin.CALLBACK_VERSION >= 2.0:
+                # we only allow one callback of type 'stdout' to be loaded, so check
+                # the name of the current plugin and type to see if we need to skip
+                # loading this callback plugin
+                callback_type = getattr(callback_plugin, 'CALLBACK_TYPE', None)
+                callback_needs_whitelist  = getattr(callback_plugin, 'CALLBACK_NEEDS_WHITELIST', False)
+                (callback_name, _) = os.path.splitext(os.path.basename(callback_plugin._original_path))
+                if callback_type == 'stdout':
+                    if callback_name != self._stdout_callback or stdout_callback_loaded:
+                        continue
+                    stdout_callback_loaded = True
+                elif callback_name == 'tree' and self._run_tree:
+                    pass
+                elif not self._run_additional_callbacks or (callback_needs_whitelist and (
+                        C.DEFAULT_CALLBACK_WHITELIST is None or callback_name not in C.DEFAULT_CALLBACK_WHITELIST)):
+                    continue
+
+            self._callback_plugins.append(callback_plugin())
+
+        self._callbacks_loaded = True
+
