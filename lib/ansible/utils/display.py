@@ -47,7 +47,7 @@ except NameError:
 
 
 logger = None
-#TODO: make this a logging callback instead
+#TODO: make this a logging callback plugin instead
 if C.DEFAULT_LOG_PATH:
     path = C.DEFAULT_LOG_PATH
     if (os.path.exists(path) and os.access(path, os.W_OK)) or os.access(os.path.dirname(path), os.W_OK):
@@ -63,39 +63,47 @@ b_COW_PATHS = (b"/usr/bin/cowsay",
                b"/usr/local/bin/cowsay",  # BSD path for cowsay
                b"/opt/local/bin/cowsay",  # MacPorts path for cowsay
               )
+
 class Display:
+
+    __state = None
 
     def __init__(self, verbosity=0, callback_plugins=None):
 
-        self._callbacks = []
-        self.columns = None
-        self.verbosity = verbosity
+        if self.__state is None:
+            self._callbacks = []
+            self.columns = None
+            self.verbosity = verbosity
 
-        # list of all deprecation messages to prevent duplicate display
-        self._deprecations = {}
-        self._warns        = {}
-        self._errors       = {}
+            # list of all deprecation messages to prevent duplicate display
+            self._deprecations = {}
+            self._warns        = {}
+            self._errors       = {}
 
-        if callback_plugins is None:
-            self._callback_plugins = []
+            if callback_plugins is None:
+                self._callback_plugins = []
+            else:
+                self._callback_plugins = callback_plugins
+
+            self.b_cowsay = None
+            self.noncow = C.ANSIBLE_COW_SELECTION
+
+            self.set_cowsay_info()
+
+            if self.b_cowsay:
+                try:
+                    cmd = subprocess.Popen([self.b_cowsay, "-l"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    (out, err) = cmd.communicate()
+                    self.cows_available = [ to_bytes(c) for c in set(C.ANSIBLE_COW_WHITELIST).intersection(out.split())]
+                except:
+                    # could not execute cowsay for some reason
+                    self.b_cowsay = False
+
+            self._set_column_width()
+            self.__state = self.__dict__
         else:
-            self._callback_plugins = callback_plugins
-
-        self.b_cowsay = None
-        self.noncow = C.ANSIBLE_COW_SELECTION
-
-        self.set_cowsay_info()
-
-        if self.b_cowsay:
-            try:
-                cmd = subprocess.Popen([self.b_cowsay, "-l"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                (out, err) = cmd.communicate()
-                self.cows_available = [ to_bytes(c) for c in set(C.ANSIBLE_COW_WHITELIST).intersection(out.split())]
-            except:
-                # could not execute cowsay for some reason
-                self.b_cowsay = False
-
-        self._set_column_width()
+            # enforce shared state on any and all instances of this class
+            self.__dict__  self.__state
 
     def set_cowsay_info(self):
         if not C.ANSIBLE_NOCOWS:
