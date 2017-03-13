@@ -127,9 +127,10 @@ class InventoryCLI(CLI):
                 results = self.yaml_inventory(top)
             else:
                 results = self.json_inventory(top)
+            results = self.dump(results)
 
         if results:
-            display.display(self.dump(results))
+            display.display(results)
             exit(0)
 
         exit(1)
