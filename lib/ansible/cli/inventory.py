@@ -154,6 +154,12 @@ class InventoryCLI(CLI):
             if internal in dump:
                 del dump[internal]
 
+    def _remove_empty(self, dump):
+        # remove empty keys
+        for x in ('hosts', 'vars', 'children'):
+            if x in dump and not dump[x]:
+                del dump[x]
+
     def _show_vars(self, dump, depth):
         result = []
         self._remove_internal(dump)
@@ -205,6 +211,7 @@ class InventoryCLI(CLI):
                 results[group.name]['children'].append(subgroup.name)
                 results.update(format_group(subgroup))
 
+            self._remove_empty(results[group.name])
             return results
 
         results = format_group(top)
@@ -246,11 +253,7 @@ class InventoryCLI(CLI):
                         self._remove_internal(myvars)
                     results[group.name]['hosts'][h.name] = myvars
 
-            # remove empty keys
-            for x in ('hosts', 'vars', 'children'):
-                if not results[group.name][x]:
-                    del results[group.name][x]
-
+            self._remove_empty(results[group.name])
             return results
 
 
