@@ -557,6 +557,13 @@ class TaskExecutor:
                 return failed_when_result
 
             if 'ansible_facts' in result:
+
+                if 'ansible_local' in result['ansible_facts']:
+                    vars_copy.update({'ansible_local': result['ansible_facts']['ansible_local']})
+                    del result['ansible_factrs']['ansible_local']
+                else:
+                    vars_copy.update({'ansible_local': {}})
+
                 if not C.NAMESPACE_FACTS:
                     vars_copy.update(result['ansible_facts'])
                 vars_copy.update({'ansible_facts': result['ansible_facts']})
