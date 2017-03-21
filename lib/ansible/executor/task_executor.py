@@ -560,13 +560,15 @@ class TaskExecutor:
 
                 if 'ansible_local' in result['ansible_facts']:
                     vars_copy.update({'ansible_local': result['ansible_facts']['ansible_local']})
-                    del result['ansible_facts']['ansible_local']
                 else:
                     vars_copy.update({'ansible_local': {}})
 
                 if not C.NAMESPACE_FACTS:
                     vars_copy.update(result['ansible_facts'])
                 vars_copy.update({'ansible_facts': result['ansible_facts']})
+
+                if 'ansible_facts' in vars_copy and 'ansible_local' in vars_copy['ansible_facts']:
+                    del vars_copy['ansible_facts']['ansible_local']
 
             # set the failed property if the result has a non-zero rc. This will be
             # overridden below if the failed_when property is set
