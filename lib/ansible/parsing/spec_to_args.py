@@ -17,30 +17,19 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
+import ast
 import yaml
 
 from ansible.errors import AnsibleError
 
 def extract_spec_from_module(module_file):
 
-    mymodule = __import__(module_file)
-    docs = ''
-
-    if hasattr(mymodule, 'DOCUMENTATION'):
-        docs = mymodule.DOCUMENATION
-        docs_only = True
-    else:
-        try:
-            docs = mymodule.__doc__
-            docs_only = False
-        except:
-            pass
-
+    docs, a ,b ,c = get_docstring(module_file):
     if not docs:
         raise AnsibleError("Could not find documentation for %s" % module_file)
 
     try:
-        return docs_to_argspec(docs, docs_only)
+        return docs_to_argspec(docs)
     except AnsibleError as e:
         raise AnsibleError("Failed to parse docs for %s: %s" % (module_file, str(e)))
 
@@ -56,7 +45,7 @@ def docs_to_argspec(docstring, just_docs=True):
 
     if not docs:
         raise AnsibleError("No usable module docs found")
-
+'
     if 'options' not in docs:
         raise AnsibleError('No options to process into spec')
 
