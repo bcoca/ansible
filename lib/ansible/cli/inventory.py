@@ -34,16 +34,16 @@ except ImportError:
     display = Display()
 
 INTERNAL_VARS = frozenset([
-                            'ansible_version',
-                            'ansible_playbook_python',
-                            'inventory_dir',
-                            'inventory_file',
-                            'inventory_hostname',
-                            'inventory_hostname_short',
-                            'groups',
-                            'group_names',
-                            'omit',
-                            'playbook_dir',
+                        'ansible_version',
+                        'ansible_playbook_python',
+                        'inventory_dir',
+                        'inventory_file',
+                        'inventory_hostname',
+                        'inventory_hostname_short',
+                        'groups',
+                        'group_names',
+                        'omit',
+                        'playbook_dir',
                         ])
 
 class InventoryCLI(CLI):
