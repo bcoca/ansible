@@ -33,9 +33,26 @@ except ImportError:
     from ansible.utils.display import Display
     display = Display()
 
-INTERNAL_VARS = frozenset(['inventory_hostname', 'inventory_hostname_short', 'group_names', 'omit', 'playbook_dir'])
+INTERNAL_VARS = frozenset([
+                            'ansible_version',
+                            'ansible_playbook_python',
+                            'inventory_dir',
+                            'inventory_file',
+                            'inventory_hostname',
+                            'inventory_hostname_short',
+                            'groups',
+                            'group_names',
+                            'omit',
+                            'playbook_dir',
+                        ])
 
 class InventoryCLI(CLI):
+
+    def __init__(self, args):
+
+        super(InventoryCLI, self).__init__(args)
+        self.vm = None
+        self.loader = None
 
     def parse(self):
 
@@ -90,34 +107,34 @@ class InventoryCLI(CLI):
         super(InventoryCLI, self).run()
 
         # Initialize needed objects
-        loader = DataLoader()
-        vm = VariableManager()
+        self.loader = DataLoader()
+        self.vm = VariableManager()
 
         # use vault if needed
         if self.options.vault_password_file:
-            vault_pass = CLI.read_vault_password_file(self.options.vault_password_file, loader=loader)
+            vault_pass = CLI.read_vault_password_file(self.options.vault_password_file, loader=self.loader)
         elif self.options.ask_vault_pass:
             vault_pass = self.ask_vault_passwords()
         else:
             vault_pass = None
 
         if vault_pass:
-            loader.set_vault_password(vault_pass)
+            self.loader.set_vault_password(vault_pass)
 
         # actually get inventory and vars
-        self.inventory = Inventory(loader=loader, variable_manager=vm, host_list=self.options.inventory)
-        vm.set_inventory(self.inventory)
+        self.inventory = Inventory(loader=self.loader, variable_manager=self.vm, host_list=self.options.inventory)
+        self.vm.set_inventory(self.inventory)
 
         if self.options.host:
             hosts = self.inventory.get_hosts(self.options.host)
             if len(hosts) != 1:
                 raise AnsibleOptionsError("You must pass a single valid host to --hosts parameter")
 
-            myvars = vm.get_vars(loader, host=hosts[0])
+            myvars = self.vm.get_vars(self.loader, host=hosts[0])
             self._remove_internal(myvars)
 
             #FIXME: should we template first?
-            results = myvars
+            results = self.dump(myvars)
 
         elif self.options.graph:
             results = self.inventory_graph()
@@ -221,7 +238,7 @@ class InventoryCLI(CLI):
         results['_meta'] = {'hostvars': {}}
         hosts = self.inventory.get_hosts()
         for host in hosts:
-            results['_meta']['hostvars'][host.name] = host.get_vars()
+            results['_meta']['hostvars'][host.name] = self.vm.get_vars(self.loader, host=host)
             self._remove_internal(results['_meta']['hostvars'][host.name])
 
         return results
@@ -250,7 +267,7 @@ class InventoryCLI(CLI):
                     myvars = {}
                     if h.name not in seen: # avoid defining host vars more than once
                         seen.append(h.name)
-                        myvars = h.get_vars() or {}
+                        myvars = self.vm.get_vars(self.loader, host=h)
                         self._remove_internal(myvars)
                     results[group.name]['hosts'][h.name] = myvars
 
