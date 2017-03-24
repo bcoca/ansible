@@ -47,6 +47,7 @@ INTERNAL_VARS = frozenset([
                         ])
 
 class InventoryCLI(CLI):
+    ''' used to display or dump the configured inventory as Ansible sees it '''
 
     def __init__(self, args):
 
