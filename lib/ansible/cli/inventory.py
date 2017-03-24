@@ -48,8 +48,8 @@ INTERNAL_VARS = frozenset([ 'ansible_version',
 class InventoryCLI(CLI):
     ''' used to display or dump the configured inventory as Ansible sees it '''
 
-    ARGUMENTS = { 'host-pattern': 'A name of a group in the inventory, a shell-like glob '
-￼                                 'selecting hosts in inventory or any combination of the two separated by commas.',
+    ARGUMENTS = { 'host': 'The name of a host to match in the inventory, relevant when using --list',
+                  'group': 'The name of a group in the inventory, relevant when using --graph',
     }
 
     def __init__(self, args):
@@ -61,7 +61,7 @@ class InventoryCLI(CLI):
     def parse(self):
 
         self.parser = CLI.base_parser(
-            usage='usage: %prog [options] [host pattern]',
+            usage='usage: %prog [options] [host|group]',
             epilog='Show Ansible inventory information, by default it uses the inventory script JSON format',
             inventory_opts=True,
             vault_opts=True
