@@ -33,21 +33,24 @@ except ImportError:
     from ansible.utils.display import Display
     display = Display()
 
-INTERNAL_VARS = frozenset([
-                        'ansible_version',
-                        'ansible_playbook_python',
-                        'inventory_dir',
-                        'inventory_file',
-                        'inventory_hostname',
-                        'inventory_hostname_short',
-                        'groups',
-                        'group_names',
-                        'omit',
-                        'playbook_dir',
-                        ])
+INTERNAL_VARS = frozenset([ 'ansible_version',
+                            'ansible_playbook_python',
+                            'inventory_dir',
+                            'inventory_file',
+                            'inventory_hostname',
+                            'inventory_hostname_short',
+                            'groups',
+                            'group_names',
+                            'omit',
+                            'playbook_dir',
+                         ])
 
 class InventoryCLI(CLI):
     ''' used to display or dump the configured inventory as Ansible sees it '''
+
+    ARGUMENTS = { 'host-pattern': 'A name of a group in the inventory, a shell-like glob '
+￼                                 'selecting hosts in inventory or any combination of the two separated by commas.',
+    }
 
     def __init__(self, args):
 
