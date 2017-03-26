@@ -340,7 +340,7 @@ CACHE_PLUGIN                   = get_config(p, DEFAULTS, 'fact_caching', 'ANSIBL
 CACHE_PLUGIN_CONNECTION        = get_config(p, DEFAULTS, 'fact_caching_connection', 'ANSIBLE_CACHE_PLUGIN_CONNECTION', None)
 CACHE_PLUGIN_PREFIX            = get_config(p, DEFAULTS, 'fact_caching_prefix', 'ANSIBLE_CACHE_PLUGIN_PREFIX', 'ansible_facts')
 CACHE_PLUGIN_TIMEOUT           = get_config(p, DEFAULTS, 'fact_caching_timeout', 'ANSIBLE_CACHE_PLUGIN_TIMEOUT', 24 * 60 * 60, value_type='integer')
-NON_ADHOC_MODULES              = get_config(p, DEFAULTS, 'non_adhoc_modules', 'ANSIBLE_NON_ADHOC_MODULES', ['include', 'include_role', 'include_vars'], islist=True)
+NON_ADHOC_MODULES              = get_config(p, DEFAULTS, 'non_adhoc_modules', 'ANSIBLE_NON_ADHOC_MODULES', ['include', 'include_role', 'include_vars', 'meta', 'add_host', 'group_by'], islist=True)
 
 # Display
 ANSIBLE_FORCE_COLOR            = get_config(p, DEFAULTS, 'force_color', 'ANSIBLE_FORCE_COLOR', None, value_type='boolean')
