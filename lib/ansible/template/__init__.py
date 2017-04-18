@@ -588,10 +588,16 @@ class Templar:
                 eol = data.find('\n')
                 line = data[len(JINJA2_OVERRIDE):eol]
                 data = data[eol+1:]
-                for pair in line.split(','):
-                    (key,val) = pair.split(':')
-                    key = key.strip()
-                    setattr(myenv, key, ast.literal_eval(val.strip()))
+                try:
+                    for pair in line.split(','):
+                        try:
+                            (key,val) = pair.split(':')
+                        except ValueError as e:
+                            AnsibleError("Invalid pair (%s) in custom override header: %s" % (pair, to_native(e)))
+                        key = key.strip()
+                        setattr(myenv, key, ast.literal_eval(val.strip()))
+                except ValueError as e:
+                    AnsibleError("Could not parse custom override header: %s" % to_native(e))
 
             #FIXME: add tests
             myenv.filters.update(self._get_filters())
