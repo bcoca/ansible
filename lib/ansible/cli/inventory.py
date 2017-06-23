@@ -22,10 +22,7 @@ from operator import attrgetter
 
 from ansible.cli import CLI
 from ansible.errors import AnsibleOptionsError
-from ansible.inventory import Inventory
 from ansible.parsing.dataloader import DataLoader
-from ansible.vars import VariableManager
-
 
 try:
     from __main__ import display
@@ -112,23 +109,31 @@ class InventoryCLI(CLI):
         super(InventoryCLI, self).run()
 
         # Initialize needed objects
-        self.loader = DataLoader()
-        self.vm = VariableManager()
-
-        # use vault if needed
-        if self.options.vault_password_file:
-            vault_pass = CLI.read_vault_password_file(self.options.vault_password_file, loader=self.loader)
-        elif self.options.ask_vault_pass:
-            vault_pass = self.ask_vault_passwords()
+        if getattr(self, '_play_prereqs'):
+            self.loader, self.inventory, self.vm = self._play_prereqs(self.options)
         else:
-            vault_pass = None
+            # fallback to pre 2.4 way of initialzing
+            from ansible.vars import VariableManager
+            from ansible.inventory import Inventory
 
-        if vault_pass:
-            self.loader.set_vault_password(vault_pass)
+            self.loader = DataLoader()
+            self.vm = VariableManager()
 
-        # actually get inventory and vars
-        self.inventory = Inventory(loader=self.loader, variable_manager=self.vm, host_list=self.options.inventory)
-        self.vm.set_inventory(self.inventory)
+            # use vault if needed
+            if self.options.vault_password_file:
+                vault_pass = CLI.read_vault_password_file(self.options.vault_password_file, loader=self.loader)
+            elif self.options.ask_vault_pass:
+                vault_pass = self.ask_vault_passwords()
+            else:
+                vault_pass = None
+
+            if vault_pass:
+                self.loader.set_vault_password(vault_pass)
+                # actually get inventory and vars
+
+            self.inventory = Inventory(loader=self.loader, variable_manager=self.vm, host_list=self.options.inventory)
+            self.vm.set_inventory(self.inventory)
+
 
         if self.options.host:
             hosts = self.inventory.get_hosts(self.options.host)
