@@ -55,6 +55,9 @@ class InventoryCLI(CLI):
         super(InventoryCLI, self).__init__(args)
         self.vm = None
         self.loader = None
+        self.inventory = None
+
+        self._new_api = True
 
     def parse(self):
 
@@ -116,6 +119,7 @@ class InventoryCLI(CLI):
             from ansible.vars import VariableManager
             from ansible.inventory import Inventory
 
+            self._new_api = False
             self.loader = DataLoader()
             self.vm = VariableManager()
 
@@ -140,7 +144,7 @@ class InventoryCLI(CLI):
             if len(hosts) != 1:
                 raise AnsibleOptionsError("You must pass a single valid host to --hosts parameter")
 
-            myvars = self.vm.get_vars(self.loader, host=hosts[0])
+            myvars = self._get_host_variables(host=hosts[0])
             self._remove_internal(myvars)
 
             #FIXME: should we template first?
@@ -149,7 +153,7 @@ class InventoryCLI(CLI):
         elif self.options.graph:
             results = self.inventory_graph()
         elif self.options.list:
-            top = self.inventory.get_group('all')
+            top = self._get_group('all')
             if self.options.yaml:
                 results = self.yaml_inventory(top)
             else:
@@ -157,11 +161,11 @@ class InventoryCLI(CLI):
             results = self.dump(results)
 
         if results:
+            #FIXME: pager?
             display.display(results)
             exit(0)
 
         exit(1)
-
 
     def dump(self, stuff):
 
@@ -175,6 +179,19 @@ class InventoryCLI(CLI):
 
         return results
 
+    def _get_host_variables(self, host):
+        if self._new_api:
+           hostvars =  self.vm.get_vars(host=host)
+        else:
+           hostvars =  self.vm.get_vars(self.loader, host=host)
+        return hostvars
+
+    def _get_group(self, gname):
+        if self._new_api:
+            group = self.inventory.groups.get(gname)
+        else:
+            group = self.inventory.get_group(gname)
+        return group
 
     def _remove_internal(self, dump):
 
@@ -219,7 +236,7 @@ class InventoryCLI(CLI):
 
     def inventory_graph(self):
 
-        start_at = self.inventory.get_group(self.options.pattern)
+        start_at = self._get_group(self.options.pattern)
         if start_at:
             return '\n'.join(self._graph_group(start_at))
         else:
@@ -248,7 +265,7 @@ class InventoryCLI(CLI):
         results['_meta'] = {'hostvars': {}}
         hosts = self.inventory.get_hosts()
         for host in hosts:
-            results['_meta']['hostvars'][host.name] = self.vm.get_vars(self.loader, host=host)
+            results['_meta']['hostvars'][host.name] = self._get_host_variables(host=host)
             self._remove_internal(results['_meta']['hostvars'][host.name])
 
         return results
@@ -277,7 +294,7 @@ class InventoryCLI(CLI):
                     myvars = {}
                     if h.name not in seen: # avoid defining host vars more than once
                         seen.append(h.name)
-                        myvars = self.vm.get_vars(self.loader, host=h)
+                        myvars = self._get_host_variables(host=h)
                         self._remove_internal(myvars)
                     results[group.name]['hosts'][h.name] = myvars
 
