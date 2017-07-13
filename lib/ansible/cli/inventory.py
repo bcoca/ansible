@@ -112,7 +112,7 @@ class InventoryCLI(CLI):
         super(InventoryCLI, self).run()
 
         # Initialize needed objects
-        if getattr(self, '_play_prereqs'):
+        if getattr(self, '_play_prereqs', False):
             self.loader, self.inventory, self.vm = self._play_prereqs(self.options)
         else:
             # fallback to pre 2.4 way of initialzing
