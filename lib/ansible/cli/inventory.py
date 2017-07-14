@@ -250,7 +250,20 @@ class InventoryCLI(CLI):
             results[group.name] = {}
             if group.name != 'all':
                 results[group.name]['hosts'] = [h.name for h in sorted(group.hosts, key=attrgetter('name'))]
+
             results[group.name]['vars'] = group.get_vars()
+            if self._new_api:
+                from ansible.plugins import lookup_loader, vars_loader
+                from ansible.utils.vars import combine_vars
+                import os
+
+                for source in self.vm._inventory._sources:
+                    for plugin in vars_loader.all():
+                        results[group.name]['vars'] = combine_vars(
+                            results[group.name]['vars'],
+                            plugin.get_vars(self.loader, os.path.dirname(source), [group])
+                        )
+
             results[group.name]['children'] = []
             for subgroup in sorted(group.child_groups, key=attrgetter('name')):
                 results[group.name]['children'].append(subgroup.name)
