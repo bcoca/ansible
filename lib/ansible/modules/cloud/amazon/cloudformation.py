@@ -1,18 +1,9 @@
 #!/usr/bin/python
-# This file is part of Ansible
-#
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright: (c) 2017, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 
 # upcoming features:
 # - Ted's multifile YAML concatenation
@@ -309,7 +300,7 @@ def create_stack(module, stack_params, cfn):
         result = stack_operation(cfn, stack_params['StackName'], 'CREATE')
     except Exception as err:
         error_msg = boto_exception(err)
-        module.fail_json(msg=error_msg)
+        module.fail_json(msg="Failed to create stack {0}: {1}.".format(stack_params.get('StackName'), error_msg), exception=traceback.format_exc())
     if not result:
         module.fail_json(msg="empty result")
     return result
@@ -333,6 +324,9 @@ def create_changeset(module, stack_params, cfn):
 
             changeset_name = 'Ansible-' + stack_params['StackName'] + '-' + sha1(to_bytes(json_params, errors='surrogate_or_strict')).hexdigest()
             stack_params['ChangeSetName'] = changeset_name
+        else:
+            changeset_name = stack_params['ChangeSetName']
+
         # Determine if this changeset already exists
         pending_changesets = list_changesets(cfn, stack_params['StackName'])
         if changeset_name in pending_changesets:
@@ -349,7 +343,7 @@ def create_changeset(module, stack_params, cfn):
         if 'No updates are to be performed.' in error_msg:
             result = dict(changed=False, output='Stack is already up-to-date.')
         else:
-            module.fail_json(msg=error_msg)
+            module.fail_json(msg="Failed to create change set: {0}".format(error_msg), exception=traceback.format_exc())
 
     if not result:
         module.fail_json(msg="empty result")
@@ -371,7 +365,7 @@ def update_stack(module, stack_params, cfn):
         if 'No updates are to be performed.' in error_msg:
             result = dict(changed=False, output='Stack is already up-to-date.')
         else:
-            module.fail_json(msg=error_msg)
+            module.fail_json(msg="Failed to update stack {0}: {1}".format(stack_params.get('StackName'), error_msg), exception=traceback.format_exc())
     if not result:
         module.fail_json(msg="empty result")
     return result

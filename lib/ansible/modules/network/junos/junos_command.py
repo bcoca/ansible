@@ -1,20 +1,12 @@
 #!/usr/bin/python
-#
-# This file is part of Ansible
-#
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
-#
+# -*- coding: utf-8 -*-
+
+# (c) 2017, Ansible by Red Hat, inc
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+
 
 ANSIBLE_METADATA = {'metadata_version': '1.0',
                     'status': ['preview'],
@@ -182,6 +174,7 @@ from ansible.module_utils.junos import junos_argument_spec, check_args, get_conf
 from ansible.module_utils.netcli import Conditional, FailedConditionalError
 from ansible.module_utils.netconf import send_request
 from ansible.module_utils.six import string_types, iteritems
+from ansible.module_utils.connection import Connection
 
 try:
     from lxml.etree import Element, SubElement, tostring
@@ -371,6 +364,18 @@ def main():
 
     warnings = list()
     check_args(module, warnings)
+
+    if module.params['provider'] and module.params['provider']['transport'] == 'cli':
+        if any((module.params['wait_for'], module.params['match'], module.params['rpcs'])):
+            module.warn('arguments wait_for, match, rpcs are not supported when using transport=cli')
+        commands = module.params['commands']
+        conn = Connection(module)
+        output = list()
+        for cmd in commands:
+            output.append(conn.get(cmd))
+        lines = [out.split('\n') for out in output]
+        result = {'changed': False, 'stdout': output, 'stdout_lines': lines}
+        module.exit_json(**result)
 
     items = list()
     items.extend(parse_commands(module, warnings))

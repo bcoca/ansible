@@ -1,18 +1,10 @@
 #!/usr/bin/python
-# This file is part of Ansible
-#
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright: Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+
 
 ANSIBLE_METADATA = {'metadata_version': '1.0',
                     'status': ['stableinterface'],
@@ -394,6 +386,10 @@ EXAMPLES = """
     tags: {}
 """
 
+import random
+import time
+import traceback
+
 try:
     import boto
     import boto.ec2.elb
@@ -405,13 +401,8 @@ try:
 except ImportError:
     HAS_BOTO = False
 
-import time
-import traceback
-import random
-
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.ec2 import ec2_argument_spec, connect_to_aws, AnsibleAWSError
-from ansible.module_utils.ec2 import get_aws_connection_info
+from ansible.module_utils.ec2 import ec2_argument_spec, connect_to_aws, AnsibleAWSError, get_aws_connection_info
 from ansible.module_utils.six import string_types
 from ansible.module_utils._text import to_native
 
@@ -649,7 +640,7 @@ class ElbManager(object):
     @_throttleable_operation(_THROTTLING_RETRIES)
     def _wait_for_elb_removed(self):
         polling_increment_secs = 15
-        max_retries = (self.wait_timeout / polling_increment_secs)
+        max_retries = (self.wait_timeout // polling_increment_secs)
         status_achieved = False
 
         for x in range(0, max_retries):
@@ -667,7 +658,7 @@ class ElbManager(object):
     @_throttleable_operation(_THROTTLING_RETRIES)
     def _wait_for_elb_interface_removed(self):
         polling_increment_secs = 15
-        max_retries = (self.wait_timeout / polling_increment_secs)
+        max_retries = (self.wait_timeout // polling_increment_secs)
         status_achieved = False
 
         elb_interfaces = self.ec2_conn.get_all_network_interfaces(
@@ -1063,7 +1054,10 @@ class ElbManager(object):
                     if 'expiration' not in self.stickiness:
                         self.module.fail_json(msg='expiration must be set when type is loadbalancer')
 
-                    expiration = self.stickiness['expiration'] if self.stickiness['expiration'] is not 0 else None
+                    try:
+                        expiration = self.stickiness['expiration'] if int(self.stickiness['expiration']) else None
+                    except ValueError:
+                        self.module.fail_json(msg='expiration must be set to an integer')
 
                     policy_attrs = {
                         'type': policy_type,

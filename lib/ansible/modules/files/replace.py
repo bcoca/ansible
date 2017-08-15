@@ -1,22 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# (c) 2013, Evan Kaufman <evan@digitalflophouse.com
-#
-# This file is part of Ansible
-#
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright: (c) 2013, Evan Kaufman <evan@digitalflophouse.com
+# Copyright: (c) 2017, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 
 ANSIBLE_METADATA = {'metadata_version': '1.0',
                     'status': ['stableinterface'],
@@ -50,12 +40,16 @@ options:
       - The regular expression to look for in the contents of the file.
         Uses Python regular expressions; see
         U(http://docs.python.org/2/library/re.html).
-        Uses multiline mode, which means C(^) and C($) match the beginning
-        and end respectively of I(each line) of the file.
+        Uses MULTILINE mode, which means C(^) and C($) match the beginning
+        and end of the file, as well as the beginning and end respectively
+        of I(each line) of the file.
+      - Does not use DOTALL, which means the C(.) special character matches
+        any character I(except newlines). A common mistake is to assume that
+        a negated character set like C([^#]) will also not match newlines.
+        In order to exclude newlines, they must be added to the set like C([^#\\n]).
       - Note that, as of ansible 2, short form tasks should have any escape
         sequences backslash-escaped in order to prevent them being parsed
         as string literal escapes. See the examples.
-
   replace:
     required: false
     description:

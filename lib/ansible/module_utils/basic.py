@@ -115,9 +115,9 @@ NoneType = type(None)
 # this matters, make sure to check for strings before checking for sequencetype
 try:
     from collections.abc import KeysView
-    SEQUENCETYPE = (Sequence, KeysView)
+    SEQUENCETYPE = (Sequence, frozenset, KeysView)
 except:
-    SEQUENCETYPE = Sequence
+    SEQUENCETYPE = (Sequence, frozenset)
 
 try:
     import json
@@ -790,7 +790,13 @@ class AnsibleModule(object):
         self.argument_spec = argument_spec
         self.supports_check_mode = supports_check_mode
         self.check_mode = False
+        self.bypass_checks = bypass_checks
         self.no_log = no_log
+        self.check_invalid_arguments = check_invalid_arguments
+        self.mutually_exclusive = mutually_exclusive
+        self.required_together = required_together
+        self.required_one_of = required_one_of
+        self.required_if = required_if
         self.cleanup_files = []
         self._debug = False
         self._diff = False
@@ -806,6 +812,7 @@ class AnsibleModule(object):
         self._legal_inputs = ['_ansible_check_mode', '_ansible_no_log', '_ansible_debug', '_ansible_diff', '_ansible_verbosity',
                               '_ansible_selinux_special_fs', '_ansible_module_name', '_ansible_version', '_ansible_syslog_facility',
                               '_ansible_socket']
+        self._options_context = list()
 
         if add_file_common_args:
             for k, v in FILE_COMMON_ARGUMENTS.items():
@@ -818,27 +825,14 @@ class AnsibleModule(object):
         # append to legal_inputs and then possibly check against them
         try:
             self.aliases = self._handle_aliases()
-        except Exception:
-            e = get_exception()
+        except Exception as e:
             # Use exceptions here because it isn't safe to call fail_json until no_log is processed
-            print('\n{"failed": true, "msg": "Module alias error: %s"}' % str(e))
+            print('\n{"failed": true, "msg": "Module alias error: %s"}' % to_native(e))
             sys.exit(1)
 
         # Save parameter values that should never be logged
         self.no_log_values = set()
-        # Use the argspec to determine which args are no_log
-        for arg_name, arg_opts in self.argument_spec.items():
-            if arg_opts.get('no_log', False):
-                # Find the value for the no_log'd param
-                no_log_object = self.params.get(arg_name, None)
-                if no_log_object:
-                    self.no_log_values.update(return_values(no_log_object))
-
-            if arg_opts.get('removed_in_version') is not None and arg_name in self.params:
-                self._deprecations.append({
-                    'msg': "Param '%s' is deprecated. See the module docs for more information" % arg_name,
-                    'version': arg_opts.get('removed_in_version')
-                })
+        self._handle_no_log_values()
 
         # check the locale as set by the current environment, and reset to
         # a known valid (LANG=C) if it's an invalid/unavailable locale
@@ -875,6 +869,9 @@ class AnsibleModule(object):
             self._check_required_if(required_if)
 
         self._set_defaults(pre=False)
+
+        # deal with options sub-spec
+        self._handle_options()
 
         if not self.no_log:
             self._log_invocation()
@@ -1002,8 +999,7 @@ class AnsibleModule(object):
             return context
         try:
             ret = selinux.lgetfilecon_raw(to_native(path, errors='surrogate_or_strict'))
-        except OSError:
-            e = get_exception()
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 self.fail_json(path=path, msg='path %s does not exist' % path)
             else:
@@ -1099,11 +1095,10 @@ class AnsibleModule(object):
             try:
                 if self.check_mode:
                     return True
-                rc = selinux.lsetfilecon(to_native(path),
-                                         str(':'.join(new_context)))
-            except OSError:
-                e = get_exception()
-                self.fail_json(path=path, msg='invalid selinux context: %s' % str(e), new_context=new_context, cur_context=cur_context, input_was=context)
+                rc = selinux.lsetfilecon(to_native(path), ':'.join(new_context))
+            except OSError as e:
+                self.fail_json(path=path, msg='invalid selinux context: %s' % to_native(e),
+                               new_context=new_context, cur_context=cur_context, input_was=context)
             if rc != 0:
                 self.fail_json(path=path, msg='set selinux context failed')
             changed = True
@@ -1194,12 +1189,11 @@ class AnsibleModule(object):
             except Exception:
                 try:
                     mode = self._symbolic_mode_to_octal(path_stat, mode)
-                except Exception:
-                    e = get_exception()
+                except Exception as e:
                     path = to_text(b_path)
                     self.fail_json(path=path,
                                    msg="mode must be in octal or symbolic form",
-                                   details=str(e))
+                                   details=to_native(e))
 
                 if mode != stat.S_IMODE(mode):
                     # prevent mode from having extra info orbeing invalid long number
@@ -1237,18 +1231,17 @@ class AnsibleModule(object):
                         new_underlying_stat = os.stat(b_path)
                         if underlying_stat.st_mode != new_underlying_stat.st_mode:
                             os.chmod(b_path, stat.S_IMODE(underlying_stat.st_mode))
-            except OSError:
-                e = get_exception()
+            except OSError as e:
                 if os.path.islink(b_path) and e.errno == errno.EPERM:  # Can't set mode on symbolic links
                     pass
                 elif e.errno in (errno.ENOENT, errno.ELOOP):  # Can't set mode on broken symbolic links
                     pass
                 else:
-                    raise e
-            except Exception:
-                e = get_exception()
+                    raise
+            except Exception as e:
                 path = to_text(b_path)
-                self.fail_json(path=path, msg='chmod failed', details=str(e))
+                self.fail_json(path=path, msg='chmod failed', details=to_native(e),
+                               exception=traceback.format_exc())
 
             path_stat = os.lstat(b_path)
             new_mode = stat.S_IMODE(path_stat.st_mode)
@@ -1287,10 +1280,10 @@ class AnsibleModule(object):
                         rc, out, err = self.run_command(attrcmd)
                         if rc != 0 or err:
                             raise Exception("Error while setting attributes: %s" % (out + err))
-                    except:
-                        e = get_exception()
+                    except Exception as e:
                         path = to_text(b_path)
-                        self.fail_json(path=path, msg='chattr failed', details=str(e))
+                        self.fail_json(path=path, msg='chattr failed', details=to_native(e),
+                                       exception=traceback.format_exc())
         return changed
 
     def get_file_attributes(self, path):
@@ -1526,13 +1519,16 @@ class AnsibleModule(object):
             os.environ['LANG'] = 'C'
             os.environ['LC_ALL'] = 'C'
             os.environ['LC_MESSAGES'] = 'C'
-        except Exception:
-            e = get_exception()
-            self.fail_json(msg="An unknown error was encountered while attempting to validate the locale: %s" % e)
+        except Exception as e:
+            self.fail_json(msg="An unknown error was encountered while attempting to validate the locale: %s" %
+                           to_native(e), exception=traceback.format_exc())
 
-    def _handle_aliases(self, spec=None):
+    def _handle_aliases(self, spec=None, param=None):
         # this uses exceptions as it happens before we can safely call fail_json
         aliases_results = {}  # alias:canon
+        if param is None:
+            param = self.params
+
         if spec is None:
             spec = self.argument_spec
         for (k, v) in spec.items():
@@ -1550,15 +1546,42 @@ class AnsibleModule(object):
             for alias in aliases:
                 self._legal_inputs.append(alias)
                 aliases_results[alias] = k
-                if alias in self.params:
-                    self.params[k] = self.params[alias]
+                if alias in param:
+                    param[k] = param[alias]
 
         return aliases_results
 
-    def _check_arguments(self, check_invalid_arguments):
+    def _handle_no_log_values(self, spec=None, param=None):
+        if spec is None:
+            spec = self.argument_spec
+        if param is None:
+            param = self.params
+
+        # Use the argspec to determine which args are no_log
+        for arg_name, arg_opts in spec.items():
+            if arg_opts.get('no_log', False):
+                # Find the value for the no_log'd param
+                no_log_object = param.get(arg_name, None)
+                if no_log_object:
+                    self.no_log_values.update(return_values(no_log_object))
+
+            if arg_opts.get('removed_in_version') is not None and arg_name in param:
+                self._deprecations.append({
+                    'msg': "Param '%s' is deprecated. See the module docs for more information" % arg_name,
+                    'version': arg_opts.get('removed_in_version')
+                })
+
+    def _check_arguments(self, check_invalid_arguments, spec=None, param=None, legal_inputs=None):
         self._syslog_facility = 'LOG_USER'
         unsupported_parameters = set()
-        for (k, v) in list(self.params.items()):
+        if spec is None:
+            spec = self.argument_spec
+        if param is None:
+            param = self.params
+        if legal_inputs is None:
+            legal_inputs = self._legal_inputs
+
+        for (k, v) in list(param.items()):
 
             if k == '_ansible_check_mode' and v:
                 self.check_mode = True
@@ -1590,7 +1613,7 @@ class AnsibleModule(object):
             elif k == '_ansible_socket':
                 self._socket_path = v
 
-            elif check_invalid_arguments and k not in self._legal_inputs:
+            elif check_invalid_arguments and k not in legal_inputs:
                 unsupported_parameters.add(k)
 
             # clean up internal params:
@@ -1598,44 +1621,57 @@ class AnsibleModule(object):
                 del self.params[k]
 
         if unsupported_parameters:
-            self.fail_json(msg="Unsupported parameters for (%s) module: %s. Supported parameters include: %s" % (self._name,
-                                                                                                                 ','.join(sorted(list(unsupported_parameters))),
-                                                                                                                 ','.join(sorted(self.argument_spec.keys()))))
+            msg = "Unsupported parameters for (%s) module: %s" % (self._name, ','.join(sorted(list(unsupported_parameters))))
+            if self._options_context:
+                msg += " found in %s." % " -> ".join(self._options_context)
+            msg += " Supported parameters include: %s" % (','.join(sorted(spec.keys())))
+            self.fail_json(msg=msg)
         if self.check_mode and not self.supports_check_mode:
             self.exit_json(skipped=True, msg="remote module (%s) does not support check mode" % self._name)
 
-    def _count_terms(self, check):
+    def _count_terms(self, check, param=None):
         count = 0
+        if param is None:
+            param = self.params
         for term in check:
-            if term in self.params:
+            if term in param:
                 count += 1
         return count
 
-    def _check_mutually_exclusive(self, spec):
+    def _check_mutually_exclusive(self, spec, param=None):
         if spec is None:
             return
         for check in spec:
-            count = self._count_terms(check)
+            count = self._count_terms(check, param)
             if count > 1:
-                self.fail_json(msg="parameters are mutually exclusive: %s" % (check,))
+                msg = "parameters are mutually exclusive: %s" % (check,)
+                if self._options_context:
+                    msg += " found in %s" % " -> ".join(self._options_context)
+                self.fail_json(msg=msg)
 
-    def _check_required_one_of(self, spec):
+    def _check_required_one_of(self, spec, param=None):
         if spec is None:
             return
         for check in spec:
-            count = self._count_terms(check)
+            count = self._count_terms(check, param)
             if count == 0:
-                self.fail_json(msg="one of the following is required: %s" % ','.join(check))
+                msg = "one of the following is required: %s" % ','.join(check)
+                if self._options_context:
+                    msg += " found in %s" % " -> ".join(self._options_context)
+                self.fail_json(msg=msg)
 
-    def _check_required_together(self, spec):
+    def _check_required_together(self, spec, param=None):
         if spec is None:
             return
         for check in spec:
-            counts = [self._count_terms([field]) for field in check]
+            counts = [self._count_terms([field], param) for field in check]
             non_zero = [c for c in counts if c > 0]
             if len(non_zero) > 0:
                 if 0 in counts:
-                    self.fail_json(msg="parameters are required together: %s" % (check,))
+                    msg = "parameters are required together: %s" % (check,)
+                    if self._options_context:
+                        msg += " found in %s" % " -> ".join(self._options_context)
+                    self.fail_json(msg=msg)
 
     def _check_required_arguments(self, spec=None, param=None):
         ''' ensure all required arguments are present '''
@@ -1649,12 +1685,17 @@ class AnsibleModule(object):
             if required and k not in param:
                 missing.append(k)
         if len(missing) > 0:
-            self.fail_json(msg="missing required arguments: %s" % ",".join(missing))
+            msg = "missing required arguments: %s" % ",".join(missing)
+            if self._options_context:
+                msg += " found in %s" % " -> ".join(self._options_context)
+            self.fail_json(msg=msg)
 
-    def _check_required_if(self, spec):
+    def _check_required_if(self, spec, param=None):
         ''' ensure that parameters which conditionally required are present '''
         if spec is None:
             return
+        if param is None:
+            param = self.params
         for sp in spec:
             missing = []
             max_missing_count = 0
@@ -1669,13 +1710,16 @@ class AnsibleModule(object):
             if is_one_of:
                 max_missing_count = len(requirements)
 
-            if key in self.params and self.params[key] == val:
+            if key in param and param[key] == val:
                 for check in requirements:
-                    count = self._count_terms((check,))
+                    count = self._count_terms((check,), param)
                     if count == 0:
                         missing.append(check)
             if len(missing) and len(missing) >= max_missing_count:
-                self.fail_json(msg="%s is %s but the following are missing: %s" % (key, val, ','.join(missing)))
+                msg = "%s is %s but the following are missing: %s" % (key, val, ','.join(missing))
+                if self._options_context:
+                    msg += " found in %s" % " -> ".join(self._options_context)
+                self.fail_json(msg=msg)
 
     def _check_argument_values(self, spec=None, param=None):
         ''' ensure all arguments have the requested values, and there are no stray arguments '''
@@ -1710,9 +1754,14 @@ class AnsibleModule(object):
                         if param[k] not in choices:
                             choices_str = ",".join([to_native(c) for c in choices])
                             msg = "value of %s must be one of: %s, got: %s" % (k, choices_str, param[k])
+                            if self._options_context:
+                                msg += " found in %s" % " -> ".join(self._options_context)
                             self.fail_json(msg=msg)
             else:
-                self.fail_json(msg="internal error: choices for argument %s are not iterable: %s" % (k, choices))
+                msg = "internal error: choices for argument %s are not iterable: %s" % (k, choices)
+                if self._options_context:
+                    msg += " found in %s" % " -> ".join(self._options_context)
+                self.fail_json(msg=msg)
 
     def safe_eval(self, value, locals=None, include_exceptions=False):
 
@@ -1737,8 +1786,7 @@ class AnsibleModule(object):
                 return (result, None)
             else:
                 return result
-        except Exception:
-            e = get_exception()
+        except Exception as e:
             if include_exceptions:
                 return (value, e)
             return value
@@ -1862,6 +1910,60 @@ class AnsibleModule(object):
         except ValueError:
             raise TypeError('%s cannot be converted to a Bit value' % type(value))
 
+    def _handle_options(self, argument_spec=None, params=None):
+        ''' deal with options to create sub spec '''
+        if argument_spec is None:
+            argument_spec = self.argument_spec
+        if params is None:
+            params = self.params
+
+        for (k, v) in argument_spec.items():
+            wanted = v.get('type', None)
+            if wanted == 'dict' or (wanted == 'list' and v.get('elements', '') == 'dict'):
+                spec = v.get('options', None)
+                if spec is None or not params[k]:
+                    continue
+
+                self._options_context.append(k)
+
+                if isinstance(params[k], dict):
+                    elements = [params[k]]
+                else:
+                    elements = params[k]
+
+                for param in elements:
+                    if not isinstance(param, dict):
+                        self.fail_json(msg="value of %s must be of type dict or list of dict" % k)
+
+                    self._set_fallbacks(spec, param)
+                    options_aliases = self._handle_aliases(spec, param)
+
+                    self._handle_no_log_values(spec, param)
+                    options_legal_inputs = list(spec.keys()) + list(options_aliases.keys())
+
+                    self._check_arguments(self.check_invalid_arguments, spec, param, options_legal_inputs)
+
+                    # check exclusive early
+                    if not self.bypass_checks:
+                        self._check_mutually_exclusive(v.get('mutually_exclusive', None), param)
+
+                    self._set_defaults(pre=True, spec=spec, param=param)
+
+                    if not self.bypass_checks:
+                        self._check_required_arguments(spec, param)
+                        self._check_argument_types(spec, param)
+                        self._check_argument_values(spec, param)
+
+                        self._check_required_together(v.get('required_together', None), param)
+                        self._check_required_one_of(v.get('required_one_of', None), param)
+                        self._check_required_if(v.get('required_if', None), param)
+
+                    self._set_defaults(pre=False, spec=spec, param=param)
+
+                    # handle multi level options (sub argspec)
+                    self._handle_options(spec, param)
+                self._options_context.pop()
+
     def _check_argument_types(self, spec=None, param=None):
         ''' ensure all arguments have the requested type '''
 
@@ -1898,45 +2000,45 @@ class AnsibleModule(object):
 
             try:
                 param[k] = type_checker(value)
-            except (TypeError, ValueError):
-                e = get_exception()
-                self.fail_json(msg="argument %s is of type %s and we were unable to convert to %s: %s" % (k, type(value), wanted, e))
+            except (TypeError, ValueError) as e:
+                self.fail_json(msg="argument %s is of type %s and we were unable to convert to %s: %s" %
+                               (k, type(value), wanted, to_native(e)))
 
-            # deal with sub options to create sub spec
-            spec = None
-            if wanted == 'dict' or (wanted == 'list' and v.get('elements', '') == 'dict'):
-                spec = v.get('options', None)
-                if spec:
-                    self._check_required_arguments(spec, param[k])
-                    self._check_argument_types(spec, param[k])
-                    self._check_argument_values(spec, param[k])
-
-    def _set_defaults(self, pre=True):
-        for (k, v) in self.argument_spec.items():
+    def _set_defaults(self, pre=True, spec=None, param=None):
+        if spec is None:
+            spec = self.argument_spec
+        if param is None:
+            param = self.params
+        for (k, v) in spec.items():
             default = v.get('default', None)
             if pre is True:
                 # this prevents setting defaults on required items
-                if default is not None and k not in self.params:
-                    self.params[k] = default
+                if default is not None and k not in param:
+                    param[k] = default
             else:
                 # make sure things without a default still get set None
-                if k not in self.params:
-                    self.params[k] = default
+                if k not in param:
+                    param[k] = default
 
-    def _set_fallbacks(self):
-        for (k, v) in self.argument_spec.items():
+    def _set_fallbacks(self, spec=None, param=None):
+        if spec is None:
+            spec = self.argument_spec
+        if param is None:
+            param = self.params
+
+        for (k, v) in spec.items():
             fallback = v.get('fallback', (None,))
             fallback_strategy = fallback[0]
             fallback_args = []
             fallback_kwargs = {}
-            if k not in self.params and fallback_strategy is not None:
+            if k not in param and fallback_strategy is not None:
                 for item in fallback[1:]:
                     if isinstance(item, dict):
                         fallback_kwargs = item
                     else:
                         fallback_args = item
                 try:
-                    self.params[k] = fallback_strategy(*fallback_args, **fallback_kwargs)
+                    param[k] = fallback_strategy(*fallback_args, **fallback_kwargs)
                 except AnsibleFallbackNotFound:
                     continue
 
@@ -2247,10 +2349,9 @@ class AnsibleModule(object):
             backupdest = '%s.%s.%s' % (fn, os.getpid(), ext)
 
             try:
-                shutil.copy2(fn, backupdest)
-            except (shutil.Error, IOError):
-                e = get_exception()
-                self.fail_json(msg='Could not make backup of %s to %s: %s' % (fn, backupdest, e))
+                self.preserved_copy(fn, backupdest)
+            except (shutil.Error, IOError) as e:
+                self.fail_json(msg='Could not make backup of %s to %s: %s' % (fn, backupdest, to_native(e)))
 
         return backupdest
 
@@ -2258,9 +2359,44 @@ class AnsibleModule(object):
         if os.path.exists(tmpfile):
             try:
                 os.unlink(tmpfile)
-            except OSError:
-                e = get_exception()
-                sys.stderr.write("could not cleanup %s: %s" % (tmpfile, e))
+            except OSError as e:
+                sys.stderr.write("could not cleanup %s: %s" % (tmpfile, to_native(e)))
+
+    def preserved_copy(self, src, dest):
+        """Copy a file with preserved ownership, permissions and context"""
+
+        # shutil.copy2(src, dst)
+        #   Similar to shutil.copy(), but metadata is copied as well - in fact,
+        #   this is just shutil.copy() followed by copystat(). This is similar
+        #   to the Unix command cp -p.
+        #
+        # shutil.copystat(src, dst)
+        #   Copy the permission bits, last access time, last modification time,
+        #   and flags from src to dst. The file contents, owner, and group are
+        #   unaffected. src and dst are path names given as strings.
+
+        shutil.copy2(src, dest)
+
+        # Set the context
+        if self.selinux_enabled():
+            context = self.selinux_context(src)
+            self.set_context_if_different(dest, context, False)
+
+        # chown it
+        try:
+            dest_stat = os.stat(src)
+            tmp_stat = os.stat(dest)
+            if dest_stat and (tmp_stat.st_uid != dest_stat.st_uid or tmp_stat.st_gid != dest_stat.st_gid):
+                os.chown(dest, dest_stat.st_uid, dest_stat.st_gid)
+        except OSError as e:
+            if e.errno != errno.EPERM:
+                raise
+
+        # Set the attributes
+        current_attribs = self.get_file_attributes(src)
+        current_attribs = current_attribs.get('attr_flags', [])
+        current_attribs = ''.join(current_attribs)
+        self.set_attributes_if_different(dest, current_attribs, True)
 
     def atomic_move(self, src, dest, unsafe_writes=False):
         '''atomically move src to dest, copying attributes from dest, returns true on success
@@ -2282,15 +2418,13 @@ class AnsibleModule(object):
                 if hasattr(os, 'chflags') and hasattr(dest_stat, 'st_flags'):
                     try:
                         os.chflags(b_src, dest_stat.st_flags)
-                    except OSError:
-                        e = get_exception()
+                    except OSError as e:
                         for err in 'EOPNOTSUPP', 'ENOTSUP':
                             if hasattr(errno, err) and e.errno == getattr(errno, err):
                                 break
                         else:
                             raise
-            except OSError:
-                e = get_exception()
+            except OSError as e:
                 if e.errno != errno.EPERM:
                     raise
             if self.selinux_enabled():
@@ -2304,12 +2438,12 @@ class AnsibleModule(object):
         try:
             # Optimistically try a rename, solves some corner cases and can avoid useless work, throws exception if not atomic.
             os.rename(b_src, b_dest)
-        except (IOError, OSError):
-            e = get_exception()
+        except (IOError, OSError) as e:
             if e.errno not in [errno.EPERM, errno.EXDEV, errno.EACCES, errno.ETXTBSY, errno.EBUSY]:
                 # only try workarounds for errno 18 (cross device), 1 (not permitted),  13 (permission denied)
                 # and 26 (text file busy) which happens on vagrant synced folders and other 'exotic' non posix file systems
-                self.fail_json(msg='Could not replace file: %s to %s: %s' % (src, dest, e), exception=traceback.format_exc())
+                self.fail_json(msg='Could not replace file: %s to %s: %s' % (src, dest, to_native(e)),
+                               exception=traceback.format_exc())
             else:
                 b_dest_dir = os.path.dirname(b_dest)
                 # Use bytes here.  In the shippable CI, this fails with
@@ -2322,9 +2456,8 @@ class AnsibleModule(object):
                 tmp_dest_name = None
                 try:
                     tmp_dest_fd, tmp_dest_name = tempfile.mkstemp(prefix=native_prefix, dir=native_dest_dir, suffix=native_suffix)
-                except (OSError, IOError):
-                    e = get_exception()
-                    error_msg = 'The destination directory (%s) is not writable by the current user. Error was: %s' % (os.path.dirname(dest), e)
+                except (OSError, IOError) as e:
+                    error_msg = 'The destination directory (%s) is not writable by the current user. Error was: %s' % (os.path.dirname(dest), to_native(e))
                 except TypeError:
                     # We expect that this is happening because python3.4.x and
                     # below can't handle byte strings in mkstemp().  Traceback
@@ -2362,21 +2495,20 @@ class AnsibleModule(object):
                                 tmp_stat = os.stat(b_tmp_dest_name)
                                 if dest_stat and (tmp_stat.st_uid != dest_stat.st_uid or tmp_stat.st_gid != dest_stat.st_gid):
                                     os.chown(b_tmp_dest_name, dest_stat.st_uid, dest_stat.st_gid)
-                            except OSError:
-                                e = get_exception()
+                            except OSError as e:
                                 if e.errno != errno.EPERM:
                                     raise
                             try:
                                 os.rename(b_tmp_dest_name, b_dest)
-                            except (shutil.Error, OSError, IOError):
-                                e = get_exception()
+                            except (shutil.Error, OSError, IOError) as e:
                                 if unsafe_writes and e.errno == errno.EBUSY:
                                     self._unsafe_writes(b_tmp_dest_name, b_dest)
                                 else:
-                                    self.fail_json(msg='Unable to rename file: %s to %s: %s' % (src, dest, e), exception=traceback.format_exc())
-                        except (shutil.Error, OSError, IOError):
-                            e = get_exception()
-                            self.fail_json(msg='Failed to replace file: %s to %s: %s' % (src, dest, e), exception=traceback.format_exc())
+                                    self.fail_json(msg='Unable to rename file: %s to %s: %s' % (src, dest, to_native(e)),
+                                                   exception=traceback.format_exc())
+                        except (shutil.Error, OSError, IOError) as e:
+                            self.fail_json(msg='Failed to replace file: %s to %s: %s' % (src, dest, to_native(e)),
+                                           exception=traceback.format_exc())
                     finally:
                         self.cleanup(b_tmp_dest_name)
 
@@ -2410,9 +2542,9 @@ class AnsibleModule(object):
                     out_dest.close()
                 if in_src:
                     in_src.close()
-        except (shutil.Error, OSError, IOError):
-            e = get_exception()
-            self.fail_json(msg='Could not write data to file (%s) from (%s): %s' % (dest, src, e), exception=traceback.format_exc())
+        except (shutil.Error, OSError, IOError) as e:
+            self.fail_json(msg='Could not write data to file (%s) from (%s): %s' % (dest, src, to_native(e)),
+                           exception=traceback.format_exc())
 
     def _read_from_pipes(self, rpipes, rfds, file_descriptor):
         data = b('')
@@ -2598,9 +2730,9 @@ class AnsibleModule(object):
             kwargs['cwd'] = cwd
             try:
                 os.chdir(cwd)
-            except (OSError, IOError):
-                e = get_exception()
-                self.fail_json(rc=e.errno, msg="Could not open %s, %s" % (cwd, str(e)))
+            except (OSError, IOError) as e:
+                self.fail_json(rc=e.errno, msg="Could not open %s, %s" % (cwd, to_native(e)),
+                               exception=traceback.format_exc())
 
         old_umask = None
         if umask:
@@ -2656,12 +2788,10 @@ class AnsibleModule(object):
             cmd.stderr.close()
 
             rc = cmd.returncode
-        except (OSError, IOError):
-            e = get_exception()
+        except (OSError, IOError) as e:
             self.log("Error Executing CMD:%s Exception:%s" % (clean_args, to_native(e)))
             self.fail_json(rc=e.errno, msg=to_native(e), cmd=clean_args)
-        except Exception:
-            e = get_exception()
+        except Exception as e:
             self.log("Error Executing CMD:%s Exception:%s" % (clean_args, to_native(traceback.format_exc())))
             self.fail_json(rc=257, msg=to_native(e), exception=traceback.format_exc(), cmd=clean_args)
 

@@ -37,10 +37,10 @@ information about running from source.  It's not necessary to install the progra
 Control Machine Requirements
 ````````````````````````````
 
-Currently Ansible can be run from any machine with Python 2.6 or 2.7 installed (Windows isn't supported for the control machine).
+Currently Ansible can be run from any machine with Python 2 (versions 2.6 or 2.7) or Python 3 (versions 3.5 and higher) installed (Windows isn't supported for the control machine).
 
 .. note::
-  Ansible 2.2 introduces a tech preview of support for Python 3. For more information, see `Python 3 Support <http://docs.ansible.com/ansible/python_3_support.html>`_.
+  Ansible 2.2 introduces a tech preview of support for Python 3 (versions 3.5 and higher). For more information, see `Python 3 Support <http://docs.ansible.com/ansible/python_3_support.html>`_.
 
 This includes Red Hat, Debian, CentOS, OS X, any of the BSDs, and so on.
 
@@ -115,16 +115,16 @@ RPMs for RHEL6 are available from yum for `EPEL
 <http://fedoraproject.org/wiki/EPEL>`_ 6 and currently supported
 Fedora distributions.
 
-Ansible will also have RPMs/YUM-repo available at `<https://releases.ansible.com/ansible/rpm/`.
+Ansible will also have RPMs/YUM-repo available at `<https://releases.ansible.com/ansible/rpms/`.
 
-Ansible itself can manage earlier operating
-systems that contain Python 2.6 or higher (so also EL6).
+Ansible version 2.4 can manage earlier operating
+systems that contain Python 2.6 or higher.
 
 You can also build an RPM yourself.  From the root of a checkout or tarball, use the ``make rpm`` command to build an RPM you can distribute and install. 
 
 .. code-block:: bash
 
-    $ git clone git://github.com/ansible/ansible.git --recursive
+    $ git clone git://github.com/ansible/ansible.git 
     $ cd ./ansible
     $ make rpm
     $ sudo rpm -Uvh ./rpm-build/ansible-*.noarch.rpm
@@ -146,7 +146,6 @@ To configure the PPA on your machine and install ansible run these commands:
     $ sudo apt-get update
     $ sudo apt-get install ansible
 
-.. note:: For the older version 1.9 we use this ppa:ansible/ansible-1.9
 .. note:: On older Ubuntu distributions, "software-properties-common" is called "python-software-properties".
 
 Debian/Ubuntu packages can also be built from the source checkout, run:
@@ -280,6 +279,8 @@ Tarballs of Tagged Releases
 Packaging Ansible or wanting to build a local package yourself, but don't want to do a git checkout?  Tarballs of releases are available on the `Ansible downloads <http://releases.ansible.com/ansible>`_ page.
 
 These releases are also tagged in the `git repository <https://github.com/ansible/ansible/releases>`_ with the release version.
+
+
 
 
 .. _from_source:

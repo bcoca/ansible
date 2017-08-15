@@ -18,10 +18,10 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
+import re
 import os
 import pty
 import subprocess
-import sys
 
 from ansible.module_utils._text import to_bytes, to_text
 from ansible.module_utils.six.moves import cPickle
@@ -90,5 +90,10 @@ class Connection(ConnectionBase):
         socket path exists. If the path exists (or the timeout has expired),
         returns the socket path.
         """
+        socket_path = None
         rc, out, err = self._do_it('RUN:')
-        return to_text(out, errors='surrogate_or_strict')
+        match = re.search(br"#SOCKET_PATH#: (\S+)", out)
+        if match:
+            socket_path = to_text(match.group(1).strip(), errors='surrogate_or_strict')
+
+        return socket_path

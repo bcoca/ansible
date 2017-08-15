@@ -260,7 +260,7 @@ class PathMapper(object):
             return minimal
 
         if path.startswith('lib/ansible/module_utils/'):
-            if ext == '.ps1':
+            if ext in ('.ps1', '.psm1'):
                 return {
                     'windows-integration': self.integration_all_target,
                 }
@@ -346,6 +346,22 @@ class PathMapper(object):
             return all_tests(self.args)  # broad impact, run all tests
 
         if path.startswith('packaging/'):
+            if path.startswith('packaging/requirements/'):
+                if name.startswith('requirements-') and ext == '.txt':
+                    component = name.split('-', 1)[1]
+
+                    candidates = (
+                        'cloud/%s/' % component,
+                    )
+
+                    for candidate in candidates:
+                        if candidate in self.integration_targets_by_alias:
+                            return {
+                                'integration': candidate,
+                            }
+
+                return all_tests(self.args)  # broad impact, run all tests
+
             return minimal
 
         if path.startswith('test/compile/'):
@@ -452,7 +468,6 @@ class PathMapper(object):
                     'COPYING',
                     'VERSION',
                     'Makefile',
-                    'setup.py',
             ):
                 return minimal
 
@@ -461,6 +476,9 @@ class PathMapper(object):
                     '.coveragerc',
             ):
                 return all_tests(self.args)  # test infrastructure, run all tests
+
+            if path == 'setup.py':
+                return all_tests(self.args)  # broad impact, run all tests
 
             if path == '.yamllint':
                 return {

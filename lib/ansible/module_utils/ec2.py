@@ -47,12 +47,6 @@ try:
 except:
     HAS_BOTO3 = False
 
-try:
-    from distutils.version import LooseVersion
-    HAS_LOOSE_VERSION = True
-except:
-    HAS_LOOSE_VERSION = False
-
 from ansible.module_utils.six import string_types, binary_type, text_type
 
 
@@ -91,7 +85,8 @@ class AWSRetry(CloudRetry):
         # https://github.com/boto/boto3/issues/876 (and linked PRs etc)
         retry_on = [
             'RequestLimitExceeded', 'Unavailable', 'ServiceUnavailable',
-            'InternalFailure', 'InternalError', 'TooManyRequestsException'
+            'InternalFailure', 'InternalError', 'TooManyRequestsException',
+            'Throttling'
         ]
 
         not_found = re.compile(r'^\w+.NotFound')
@@ -179,9 +174,9 @@ def get_aws_connection_info(module, boto3=False):
             access_key = os.environ['AWS_ACCESS_KEY']
         elif os.environ.get('EC2_ACCESS_KEY'):
             access_key = os.environ['EC2_ACCESS_KEY']
-        elif boto.config.get('Credentials', 'aws_access_key_id'):
+        elif HAS_BOTO and boto.config.get('Credentials', 'aws_access_key_id'):
             access_key = boto.config.get('Credentials', 'aws_access_key_id')
-        elif boto.config.get('default', 'aws_access_key_id'):
+        elif HAS_BOTO and boto.config.get('default', 'aws_access_key_id'):
             access_key = boto.config.get('default', 'aws_access_key_id')
         else:
             # in case access_key came in as empty string
@@ -194,9 +189,9 @@ def get_aws_connection_info(module, boto3=False):
             secret_key = os.environ['AWS_SECRET_KEY']
         elif os.environ.get('EC2_SECRET_KEY'):
             secret_key = os.environ['EC2_SECRET_KEY']
-        elif boto.config.get('Credentials', 'aws_secret_access_key'):
+        elif HAS_BOTO and boto.config.get('Credentials', 'aws_secret_access_key'):
             secret_key = boto.config.get('Credentials', 'aws_secret_access_key')
-        elif boto.config.get('default', 'aws_secret_access_key'):
+        elif HAS_BOTO and boto.config.get('default', 'aws_secret_access_key'):
             secret_key = boto.config.get('default', 'aws_secret_access_key')
         else:
             # in case secret_key came in as empty string
@@ -211,10 +206,13 @@ def get_aws_connection_info(module, boto3=False):
             region = os.environ['EC2_REGION']
         else:
             if not boto3:
-                # boto.config.get returns None if config not found
-                region = boto.config.get('Boto', 'aws_region')
-                if not region:
-                    region = boto.config.get('Boto', 'ec2_region')
+                if HAS_BOTO:
+                    # boto.config.get returns None if config not found
+                    region = boto.config.get('Boto', 'aws_region')
+                    if not region:
+                        region = boto.config.get('Boto', 'ec2_region')
+                else:
+                    module.fail_json(msg="boto is required for this module. Please install boto and try again")
             elif HAS_BOTO3:
                 # here we don't need to make an additional call, will default to 'us-east-1' if the below evaluates to None.
                 region = botocore.session.get_session().get_config_variable('region')
@@ -228,9 +226,9 @@ def get_aws_connection_info(module, boto3=False):
             security_token = os.environ['AWS_SESSION_TOKEN']
         elif os.environ.get('EC2_SECURITY_TOKEN'):
             security_token = os.environ['EC2_SECURITY_TOKEN']
-        elif boto.config.get('Credentials', 'aws_security_token'):
+        elif HAS_BOTO and boto.config.get('Credentials', 'aws_security_token'):
             security_token = boto.config.get('Credentials', 'aws_security_token')
-        elif boto.config.get('default', 'aws_security_token'):
+        elif HAS_BOTO and boto.config.get('default', 'aws_security_token'):
             security_token = boto.config.get('default', 'aws_security_token')
         else:
             # in case secret_token came in as empty string
@@ -318,7 +316,7 @@ def ec2_connect(module):
     return ec2
 
 
-def paging(pause=0, marker_property='marker'):
+def paging(pause=0, marker_property='marker', result_key=None):
     """ Adds paging to boto retrieval functions that support a 'marker'
         this is configurable as not all boto functions seem to use the
         same name.
@@ -329,8 +327,12 @@ def paging(pause=0, marker_property='marker'):
             marker = None
             while True:
                 try:
-                    new = f(*args, marker=marker, **kwargs)
-                    marker = getattr(new, marker_property)
+                    if marker:
+                        kwargs[marker_property] = marker
+                    new = f(*args, **kwargs)
+                    marker = new.get(marker_property)
+                    if result_key:
+                        new = new[result_key]
                     results.extend(new)
                     if not marker:
                         break
@@ -345,17 +347,27 @@ def paging(pause=0, marker_property='marker'):
     return wrapper
 
 
+def _camel_to_snake(name):
+
+    def prepend_underscore_and_lower(m):
+        return '_' + m.group(0).lower()
+
+    import re
+    # Cope with pluralized abbreviations such as TargetGroupARNs
+    # that would otherwise be rendered target_group_ar_ns
+    plural_pattern = r'[A-Z]{3,}s$'
+    s1 = re.sub(plural_pattern, prepend_underscore_and_lower, name)
+    # Handle when there was nothing before the plural_pattern
+    if s1.startswith("_") and not name.startswith("_"):
+        s1 = s1[1:]
+    # Remainder of solution seems to be https://stackoverflow.com/a/1176023
+    first_cap_pattern = r'(.)([A-Z][a-z]+)'
+    all_cap_pattern = r'([a-z0-9])([A-Z]+)'
+    s2 = re.sub(first_cap_pattern, r'\1_\2', s1)
+    return re.sub(all_cap_pattern, r'\1_\2', s2).lower()
+
+
 def camel_dict_to_snake_dict(camel_dict):
-
-    def camel_to_snake(name):
-
-        import re
-
-        first_cap_re = re.compile('(.)([A-Z][a-z]+)')
-        all_cap_re = re.compile('([a-z0-9])([A-Z])')
-        s1 = first_cap_re.sub(r'\1_\2', name)
-
-        return all_cap_re.sub(r'\1_\2', s1).lower()
 
     def value_is_list(camel_list):
 
@@ -373,11 +385,11 @@ def camel_dict_to_snake_dict(camel_dict):
     snake_dict = {}
     for k, v in camel_dict.items():
         if isinstance(v, dict):
-            snake_dict[camel_to_snake(k)] = camel_dict_to_snake_dict(v)
+            snake_dict[_camel_to_snake(k)] = camel_dict_to_snake_dict(v)
         elif isinstance(v, list):
-            snake_dict[camel_to_snake(k)] = value_is_list(v)
+            snake_dict[_camel_to_snake(k)] = value_is_list(v)
         else:
-            snake_dict[camel_to_snake(k)] = v
+            snake_dict[_camel_to_snake(k)] = v
 
     return snake_dict
 

@@ -56,6 +56,7 @@ class AnsibleCoreCI(object):
 
         aws_platforms = (
             'aws',
+            'azure',
             'windows',
             'freebsd',
             'rhel',
@@ -181,7 +182,7 @@ class AnsibleCoreCI(object):
 
         raise self._create_http_error(response)
 
-    def get(self, tries=2, sleep=10, always_raise_on=None):
+    def get(self, tries=3, sleep=15, always_raise_on=None):
         """
         Get instance connection information.
         :type tries: int
@@ -290,8 +291,8 @@ class AnsibleCoreCI(object):
             'Content-Type': 'application/json',
         }
 
-        tries = 2
-        sleep = 10
+        tries = 3
+        sleep = 15
 
         while True:
             tries -= 1

@@ -1,20 +1,12 @@
 #!/usr/bin/python
-#
-# This file is part of Ansible
-#
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
-#
+# -*- coding: utf-8 -*-
+
+# (c) 2017, Ansible by Red Hat, inc
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+
 
 ANSIBLE_METADATA = {'metadata_version': '1.0',
                     'status': ['preview'],
@@ -102,7 +94,7 @@ requirements:
   - ncclient (>=v0.5.2)
 notes:
   - This module requires the netconf system service be enabled on
-    the remote device being managed
+    the remote device being managed.
 """
 
 EXAMPLES = """
@@ -122,6 +114,18 @@ EXAMPLES = """
   junos_user:
     name: ansible
     purge: yes
+
+- name: Create list of users
+  junos_user:
+    aggregate:
+      - {name: test_user1, full_name: test_user2, role: operator, state: present}
+      - {name: test_user2, full_name: test_user2, role: read-only, state: present}
+
+- name: Delete list of users
+  junos_user:
+    aggregate:
+      - {name: test_user1, full_name: test_user2, role: operator, state: absent}
+      - {name: test_user2, full_name: test_user2, role: read-only, state: absent}
 """
 
 RETURN = """
@@ -138,7 +142,10 @@ diff.prepared:
 """
 from functools import partial
 
+from copy import deepcopy
+
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.network_common import remove_default_spec
 from ansible.module_utils.junos import junos_argument_spec, check_args
 from ansible.module_utils.junos import commit_configuration, discard_changes
 from ansible.module_utils.junos import load_config, locked_config
@@ -211,8 +218,6 @@ def map_params_to_obj(module):
     if not aggregate:
         if not module.params['name'] and module.params['purge']:
             return list()
-        elif not module.params['name']:
-            module.fail_json(msg='missing required argument: name')
         else:
             collection = [{'name': module.params['name']}]
     else:
@@ -220,8 +225,6 @@ def map_params_to_obj(module):
         for item in aggregate:
             if not isinstance(item, dict):
                 collection.append({'username': item})
-            elif 'name' not in item:
-                module.fail_json(msg='missing required argument: name')
             else:
                 collection.append(item)
 
@@ -251,26 +254,37 @@ def map_params_to_obj(module):
 def main():
     """ main entry point for module execution
     """
-    argument_spec = dict(
-        aggregate=dict(type='list', aliases=['collection', 'users']),
+    element_spec = dict(
         name=dict(),
-
         full_name=dict(),
         role=dict(choices=ROLES, default='unauthorized'),
         sshkey=dict(),
-
-        purge=dict(type='bool'),
-
         state=dict(choices=['present', 'absent'], default='present'),
-        active=dict(default=True, type='bool')
+        active=dict(type='bool', default=True)
     )
 
-    mutually_exclusive = [('aggregate', 'name')]
+    aggregate_spec = deepcopy(element_spec)
+    aggregate_spec['name'] = dict(required=True)
+
+    # remove default in aggregate spec, to handle common arguments
+    remove_default_spec(aggregate_spec)
+
+    argument_spec = dict(
+        aggregate=dict(type='list', elements='dict', options=aggregate_spec, aliases=['collection', 'users']),
+        purge=dict(default=False, type='bool')
+    )
+
+    argument_spec.update(element_spec)
+    argument_spec.update(junos_argument_spec)
+
+    required_one_of = [['aggregate', 'name']]
+    mutually_exclusive = [['aggregate', 'name']]
 
     argument_spec.update(junos_argument_spec)
 
     module = AnsibleModule(argument_spec=argument_spec,
                            mutually_exclusive=mutually_exclusive,
+                           required_one_of=required_one_of,
                            supports_check_mode=True)
 
     warnings = list()

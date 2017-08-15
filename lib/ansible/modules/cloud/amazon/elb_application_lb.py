@@ -372,7 +372,7 @@ def convert_tg_name_to_arn(connection, module, tg_name):
 
 def wait_for_status(connection, module, elb_arn, status):
     polling_increment_secs = 15
-    max_retries = module.params.get('wait_timeout') / polling_increment_secs
+    max_retries = module.params.get('wait_timeout') // polling_increment_secs
     status_achieved = False
 
     for x in range(0, max_retries):
@@ -416,11 +416,7 @@ def get_elb_attributes(connection, module, elb_arn):
         module.fail_json(msg=e.message, exception=traceback.format_exc(), **camel_dict_to_snake_dict(e.response))
 
     # Replace '.' with '_' in attribute key names to make it more Ansibley
-    for k, v in dict(elb_attributes).items():
-        elb_attributes[k.replace('.', '_')] = v
-        del elb_attributes[k]
-
-    return elb_attributes
+    return dict((k.replace('.', '_'), v) for k, v in elb_attributes.items())
 
 
 def get_listener(connection, module, elb_arn, listener_port):

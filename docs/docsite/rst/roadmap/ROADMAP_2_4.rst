@@ -90,9 +90,9 @@ Static Loop Keyword
 
 Vault
 -----
-- Support for multiple vault passwords. PR in ansible/ansible `#22756 <https://github.com/ansible/ansible/pull/22756>`_
+- Support for multiple vault passwords.  **(done)**
 
-  - Each decrypted item should know which secret to request
+  - Each decrypted item should know which secret to request **(done)**
   - Support requesting credentials (password prompt) as callbacks
 
 - Ability to open and edit file with encrypted vars deencrypted, and encrypt/format on save
@@ -150,8 +150,8 @@ Windows
 
   - Split "Windows" category into multiple subs
   - Domain user/group management modules **(in progress)**
-  - win_mapped_drive module **(in progress)**
-  - win_hotfix
+  - win_mapped_drive module **(done)**
+  - win_hotfix **(done)**
   - win_updates rewrite to require become
   - win_package changes required to deprecate win_msi
   - win_copy re-write

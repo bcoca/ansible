@@ -2,20 +2,11 @@
 
 # (c) James Laska
 #
-# This file is part of Ansible
-#
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
@@ -36,6 +27,7 @@ notes:
     - In order to register a system, rhnreg_ks requires either a username and password, or an activationkey.
 requirements:
     - rhnreg_ks
+    - either libxml2 or lxml
 options:
     state:
         description:
@@ -141,8 +133,6 @@ RETURN = '''
 
 import os
 import sys
-import urlparse
-import xmlrpclib
 
 # Attempt to import rhn client tools
 sys.path.insert(0, '/usr/share/rhn')
@@ -155,7 +145,8 @@ except ImportError:
 
 # INSERT REDHAT SNIPPETS
 from ansible.module_utils import redhat
-from ansible.module_utils.basic import AnsibleModule, get_exception
+from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.six.moves import urllib, xmlrpc_client
 
 
 class Rhn(redhat.RegistrationBase):
@@ -163,6 +154,12 @@ class Rhn(redhat.RegistrationBase):
     def __init__(self, module=None, username=None, password=None):
         redhat.RegistrationBase.__init__(self, module, username, password)
         self.config = self.load_config()
+        self.server = None
+        self.session = None
+
+    def logout(self):
+        if self.session is not None:
+            self.server.auth.logout(self.session)
 
     def load_config(self):
         '''
@@ -187,7 +184,7 @@ class Rhn(redhat.RegistrationBase):
 
             Returns: str
         '''
-        url = urlparse.urlparse(self.server_url)
+        url = urllib.parse.urlparse(self.server_url)
         return url[1].replace('xmlrpc.', '')
 
     @property
@@ -220,7 +217,7 @@ class Rhn(redhat.RegistrationBase):
                     root = etree.fromstring(xml_data)
                     systemid = root.xpath(xpath_str)[0].text
                 except ImportError:
-                    pass
+                    raise Exception('"libxml2" or "lxml" is required for this module.')
 
             # Strip the 'ID-' prefix
             if systemid is not None and systemid.startswith('ID-'):
@@ -281,12 +278,12 @@ class Rhn(redhat.RegistrationBase):
         '''
             Convenience RPC wrapper
         '''
-        if not hasattr(self, 'server') or self.server is None:
+        if self.server is None:
             if self.hostname != 'rhn.redhat.com':
                 url = "https://%s/rpc/api" % self.hostname
             else:
                 url = "https://xmlrpc.%s/rpc/api" % self.hostname
-            self.server = xmlrpclib.Server(url, verbose=0)
+            self.server = xmlrpc_client.ServerProxy(url)
             self.session = self.server.auth.login(self.username, self.password)
 
         func = getattr(self.server, method)
@@ -335,10 +332,7 @@ class Rhn(redhat.RegistrationBase):
             Return True if we are running against Hosted (rhn.redhat.com) or
             False otherwise (when running against Satellite or Spacewalk)
         '''
-        if 'rhn.redhat.com' in self.hostname:
-            return True
-        else:
-            return False
+        return 'rhn.redhat.com' in self.hostname
 
 
 def main():
@@ -396,28 +390,30 @@ def main():
 
         # Register system
         if rhn.is_registered:
-            return module.exit_json(changed=False, msg="System already registered.")
+            module.exit_json(changed=False, msg="System already registered.")
 
         try:
             rhn.enable()
             rhn.register(enable_eus, activationkey, profilename, sslcacert, systemorgid)
             rhn.subscribe(channels)
-        except Exception:
-            e = get_exception()
-            module.fail_json(msg="Failed to register with '%s': %s" % (rhn.hostname, e))
+        except Exception as exc:
+            module.fail_json(msg="Failed to register with '%s': %s" % (rhn.hostname, exc))
+        finally:
+            rhn.logout()
 
         module.exit_json(changed=True, msg="System successfully registered to '%s'." % rhn.hostname)
 
     # Ensure system is *not* registered
     if state == 'absent':
         if not rhn.is_registered:
-            return module.exit_json(changed=False, msg="System already unregistered.")
+            module.exit_json(changed=False, msg="System already unregistered.")
 
         try:
             rhn.unregister()
-        except Exception:
-            e = get_exception()
-            module.fail_json(msg="Failed to unregister: %s" % e)
+        except Exception as exc:
+            module.fail_json(msg="Failed to unregister: %s" % exc)
+        finally:
+            rhn.logout()
 
         module.exit_json(changed=True, msg="System successfully unregistered from %s." % rhn.hostname)
 

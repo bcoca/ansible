@@ -1,22 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# (c) 2012, Michael DeHaan <michael.dehaan@gmail.com>
-#
-# This file is part of Ansible
-#
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright: (c) 2012, Michael DeHaan <michael.dehaan@gmail.com>
+# Copyright: (c) 2017, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 
 ANSIBLE_METADATA = {'metadata_version': '1.0',
                     'status': ['stableinterface'],
@@ -42,13 +32,14 @@ options:
         is copied. This behavior is similar to Rsync.
   content:
     description:
-      - When used instead of 'src', sets the contents of a file directly to the specified value.
+      - When used instead of I(src), sets the contents of a file directly to the specified value.
         For anything advanced or with formatting also look at the template module.
     version_added: "1.1"
   dest:
     description:
-      - Remote absolute path where the file should be copied to. If C(src) is a directory,
-        this must be a directory too.
+      - 'Remote absolute path where the file should be copied to. If I(src) is a directory, this must be a directory too.
+        If I(dest) is a nonexistent path and if either I(dest) ends with "/" or I(src) is a directory, I(dest) is created.
+        If I(src) and I(dest) are files, the parent directory of I(dest) isn''t created: the task fails if it doesn''t already exist.'
     required: yes
   backup:
     description:
@@ -74,9 +65,9 @@ options:
     version_added: "1.5"
   remote_src:
     description:
-      - If C(no), it will search for src at originating/master machine.
-      - If C(yes), it will go to the remote/target machine for the src. Default is False.
-      - Currently C(remote_src) does not support recursive copying.
+      - If C(no), it will search for I(src) at originating/master machine.
+      - If C(yes) it will go to the remote/target machine for the I(src). Default is C(no).
+      - Currently I(remote_src) does not support recursive copying.
     type: bool
     default: 'no'
     version_added: "2.0"
@@ -100,8 +91,8 @@ author:
     - "Ansible Core Team"
     - "Michael DeHaan"
 notes:
-   - The "copy" module recursively copy facility does not scale to lots (>hundreds) of files.
-     For alternative, see synchronize module, which is a wrapper around rsync.
+   - The M(copy) module recursively copy facility does not scale to lots (>hundreds) of files.
+     For alternative, see M(synchronize) module, which is a wrapper around C(rsync).
    - For Windows targets, use the M(win_copy) module instead.
 '''
 
@@ -143,14 +134,14 @@ EXAMPLES = r'''
 - copy:
     src: /mine/sudoers
     dest: /etc/sudoers
-    validate: visudo -cf %s
+    validate: /usr/sbin/visudo -cf %s
 
 # Copy a "sudoers" file on the remote machine for editing
 - copy:
     src: /etc/sudoers
     dest: /etc/sudoers.edit
     remote_src: yes
-    validate: visudo -cf %s
+    validate: /usr/sbin/visudo -cf %s
 
 # Create a CSV file from your complete inventory using an inline template
 - hosts: all
@@ -238,7 +229,6 @@ import traceback
 
 # import module snippets
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.pycompat24 import get_exception
 from ansible.module_utils._text import to_bytes, to_native
 
 
@@ -359,8 +349,7 @@ def main():
                 # the execute bit for the current user set, in
                 # which case the stat() call will raise an OSError
                 os.stat(os.path.dirname(b_dest))
-            except OSError:
-                e = get_exception()
+            except OSError as e:
                 if "permission denied" in to_native(e).lower():
                     module.fail_json(msg="Destination directory %s is not accessible" % (os.path.dirname(dest)))
             module.fail_json(msg="Destination directory %s does not exist" % (os.path.dirname(dest)))

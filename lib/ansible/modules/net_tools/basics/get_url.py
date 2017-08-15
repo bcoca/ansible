@@ -502,7 +502,7 @@ def main():
         module.fail_json(msg="Request failed", status_code=info['status'], response=info['msg'])
     if not os.access(tmpsrc, os.R_OK):
         os.remove(tmpsrc)
-        module.fail_json(msg="Source %s not readable" % (tmpsrc))
+        module.fail_json(msg="Source %s is not readable" % (tmpsrc))
     checksum_src = module.sha1(tmpsrc)
 
     # check if there is no dest file
@@ -510,15 +510,18 @@ def main():
         # raise an error if copy has no permission on dest
         if not os.access(dest, os.W_OK):
             os.remove(tmpsrc)
-            module.fail_json(msg="Destination %s not writable" % (dest))
+            module.fail_json(msg="Destination %s is not writable" % (dest))
         if not os.access(dest, os.R_OK):
             os.remove(tmpsrc)
-            module.fail_json(msg="Destination %s not readable" % (dest))
+            module.fail_json(msg="Destination %s is not readable" % (dest))
         checksum_dest = module.sha1(dest)
     else:
+        if not os.path.exists(os.path.dirname(dest)):
+            os.remove(tmpsrc)
+            module.fail_json(msg="Destination %s does not exist" % (os.path.dirname(dest)))
         if not os.access(os.path.dirname(dest), os.W_OK):
             os.remove(tmpsrc)
-            module.fail_json(msg="Destination %s not writable" % (os.path.dirname(dest)))
+            module.fail_json(msg="Destination %s is not writable" % (os.path.dirname(dest)))
 
     backup_file = None
     if checksum_src != checksum_dest:
@@ -526,9 +529,10 @@ def main():
             if backup:
                 if os.path.exists(dest):
                     backup_file = module.backup_local(dest)
-            shutil.copyfile(tmpsrc, dest)
+            module.atomic_move(tmpsrc, dest)
         except Exception as e:
-            os.remove(tmpsrc)
+            if os.path.exists(tmpsrc):
+                os.remove(tmpsrc)
             module.fail_json(msg="failed to copy %s to %s: %s" % (tmpsrc, dest, to_native(e)),
                              exception=traceback.format_exc())
         changed = True
@@ -541,8 +545,6 @@ def main():
         if checksum != destination_checksum:
             os.remove(dest)
             module.fail_json(msg="The checksum for %s did not match %s; it was %s." % (dest, checksum, destination_checksum))
-
-    os.remove(tmpsrc)
 
     # allow file attribute changes
     module.params['path'] = dest

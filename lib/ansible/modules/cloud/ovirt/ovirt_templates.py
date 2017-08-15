@@ -40,7 +40,7 @@ options:
     state:
         description:
             - "Should the template be present/absent/exported/imported/registered.
-               When C(state) is R(registered) and the unregistered template's name
+               When C(state) is I(registered) and the unregistered template's name
                belongs to an already registered in engine template then we fail
                to register the unregistered template."
         choices: ['present', 'absent', 'exported', 'imported', 'registered']
@@ -72,10 +72,17 @@ options:
         description:
             - "When C(state) is I(imported) and C(image_provider) is used this parameter specifies the name of disk
                to be imported as template."
+        aliases: ['glance_image_disk_name']
+    template_image_disk_name:
+        description:
+            - "When C(state) is I(imported) and C(image_provider) is used this parameter specifies the new name for imported disk,
+               if omitted then I(image_disk) name is used by default.
+               This parameter is used only in case of importing disk image from Glance domain."
+        version_added: "2.4"
     storage_domain:
         description:
             - "When C(state) is I(imported) this parameter specifies the name of the destination data storage domain.
-               When C(state) is R(registered) this parameter specifies the name of the data storage domain of the unregistered template."
+               When C(state) is I(registered) this parameter specifies the name of the data storage domain of the unregistered template."
     clone_permissions:
         description:
             - "If I(True) then the permissions of the VM (only the direct ones, not the inherited ones)
@@ -116,6 +123,16 @@ EXAMPLES = '''
   name: mytemplate
   storage_domain: mystorage
   cluster: mycluster
+
+# Import image from Glance s a template
+- ovirt_templates:
+    state: imported
+    name: mytemplate
+    image_disk: "centos7"
+    template_image_disk_name: centos7_from_glance
+    image_provider: "glance_domain"
+    storage_domain: mystorage
+    cluster: mycluster
 '''
 
 RETURN = '''
@@ -228,7 +245,8 @@ def main():
         storage_domain=dict(default=None),
         exclusive=dict(type='bool'),
         image_provider=dict(default=None),
-        image_disk=dict(default=None),
+        image_disk=dict(default=None, aliases=['glance_image_disk_name']),
+        template_image_disk_name=dict(default=None),
     )
     module = AnsibleModule(
         argument_spec=argument_spec,
@@ -279,7 +297,7 @@ def main():
                 if module.params['image_provider']:
                     kwargs.update(
                         disk=otypes.Disk(
-                            name=module.params['image_disk']
+                            name=module.params['template_image_disk_name'] or module.params['image_disk']
                         ),
                         template=otypes.Template(
                             name=module.params['name'],

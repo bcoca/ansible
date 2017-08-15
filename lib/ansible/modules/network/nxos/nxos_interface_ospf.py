@@ -207,7 +207,10 @@ def get_value(arg, config, module):
 def get_existing(module, args):
     existing = {}
     netcfg = CustomNetworkConfig(indent=2, contents=get_config(module))
-    parents = ['interface {0}'.format(module.params['interface'].capitalize())]
+    if module.params['interface'].startswith('loopback') or module.params['interface'].startswith('port-channel'):
+        parents = ['interface {0}'.format(module.params['interface'])]
+    else:
+        parents = ['interface {0}'.format(module.params['interface'].capitalize())]
     config = netcfg.get_section(parents)
     if 'ospf' in config:
         for arg in args:
@@ -285,6 +288,13 @@ def state_present(module, existing, proposed, candidate):
     existing_commands = apply_key_map(PARAM_TO_COMMAND_KEYMAP, existing)
 
     for key, value in proposed_commands.items():
+        if existing_commands.get(key):
+            if key == 'ip router ospf':
+                if proposed['area'] == existing['area']:
+                    continue
+            if existing_commands[key] == proposed_commands[key]:
+                continue
+
         if value is True:
             commands.append(key)
         elif value is False:
@@ -383,7 +393,7 @@ def main():
                                                'message_digest_password']],
                            supports_check_mode=True)
 
-    if not module.params['interface'].startswith('loopback'):
+    if not module.params['interface'].startswith('loopback') and not module.params['interface'].startswith('port-channel'):
         module.params['interface'] = module.params['interface'].capitalize()
 
     warnings = list()

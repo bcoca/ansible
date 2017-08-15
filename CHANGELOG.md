@@ -49,6 +49,7 @@ Ansible Changes By Release
 
 #### Deprecated Modules:
 * ec2_facts (removed in 2.7), replaced by ec2_metadata_facts
+* cs_nic (removed in 2.7), replaced by cs_instance_nic_secondaryip, also see new module cs_instance_nic for managing nics
 
 #### Removed Deprecated Modules:
 * eos_template (use eos_config instead)
@@ -57,6 +58,10 @@ Ansible Changes By Release
 * junos_template (use junos_config instead)
 * nxos_template (use nxos_config instead)
 * ops_template (use ops_config instead)
+
+* Modules (scheduled for removal in 2.6)
+
+  * ec2_remote_facts
 
 ### Minor Changes
 * Removed previously deprecated config option `hostfile` and env var `ANSIBLE_HOSTS`
@@ -107,6 +112,10 @@ Ansible Changes By Release
   in ansible/module_utils/six/__init__.py.  Six is tricky to unbundle, however,
   so they may want to base their efforts off the code we were using:
     * https://github.com/ansible/ansible/blob/2fff690caab6a1c6a81973f704be3fbd0bde2c2f/lib/ansible/module_utils/six/__init__.py
+* Update ipaddr Jinja filters to replace existing non RFC compliant ones. Added additional filters for easier use
+  of handling IP addresses. (PR# 26566)
+* datetime filter updated to use default format of datetime.datetime (ISO8601)
+* The junit plugin now has an option to report a junit test failure on changes for idempotent testing.
 
 #### New Callbacks:
 - full_skip
@@ -139,15 +148,45 @@ Ansible Changes By Release
   case, lnk_target will remain relative while lnk_source will be expanded to an
   absolute path.
 - The archive module has a new parameter exclude_path which lists paths to exclude from the archive
+- The yum module has a new parameter security which limits state=latest to security updates
+- The template module gained a follow parameter to match with copy and file.
+  Like those modules, template defaults this parameter to False.  Previously,
+  template hardcoded this to true.
 
 ### New Modules
 - aci
+  * aci_action_rule_profile
+  * aci_context
+  * aci_contract
+  * aci_fc_policy
+  * aci_filter
+  * aci_l2_policy
+  * aci_lldp_policy
+  * aci_mcp
+  * aci_monitoring_policy
+  * aci_port_channel
+  * aci_port_security
   * aci_rest
+  * aci_route_tag_policy
+  * aci_span_dst_group
+  * aci_taboo_contract
+  * aci_tenant
 - aix_lvol
 - amazon
+  * aws_api_gateway
+  * dynamodb_ttl
+  * ec2_instance_facts
   * ec2_metadata_facts
   * ec2_vpc_endpoint
+  * ec2_vpc_endpoint_facts
+  * ec2_vpc_peering_facts
+  * elb_application_lb
+  * elb_application_lb_facts
+  * elb_target_group
+  * elb_target_group_facts
   * iam_cert_facts
+  * iam_group
+  * iam_managed_policy
   * lightsail
 - atomic
   * atomic_container
@@ -236,6 +275,8 @@ Ansible Changes By Release
   * ce_vxlan_tunnel
   * ce_vxlan_vap
 - cloudstack
+  * cs_instance_nic
+  * cs_instance_nic_secondaryip
   * cs_network_acl
   * cs_network_acl_rule
   * cs_vpn_gateway
@@ -262,26 +303,40 @@ Ansible Changes By Release
   * purefa_pg
   * purefa_volume
 - imc
-  * imc_xml
+  * imc_rest
 - rundeck
   * rundeck_acl_policy
   * rundeck_project
-- sensu_silence
+- sensu
+  * sensu_client
+  * sensu_silence
+  * sensu_handler
 - vmware
+  * vcenter_license
   * vmware_guest_find
+  * vmware_guest_tools_wait
 - windows
   * win_defrag
   * win_domain_group
   * win_dsc
+  * win_eventlog
+  * win_eventlog_entry
   * win_firewall
-  * win_group_member
+  * win_group_membership
+  * win_hotfix
+  * win_mapped_drive
   * win_psmodule
   * win_route
   * win_security_policy
+  * win_user_right
   * win_wakeonlan
+- xml
 
+<a id="2.3"></a>
 
 ## 2.3 "Ramble On" - 2017-04-12
+
+Moving to Ansible 2.3 guide http://docs.ansible.com/ansible/porting_guide_2.3.html
 
 ### Major Changes
 * Documented and renamed the previously released 'single var vaulting' feature, allowing user to use vault encryption for single variables in a normal YAML vars file.
@@ -596,6 +651,7 @@ Ansible Changes By Release
   * zfs_facts
   * zpool_facts
 
+<a id="2.2.1"></a>
 
 ## 2.2.1 "The Battle of Evermore" - 2017-01-16
 
@@ -622,10 +678,11 @@ Ansible Changes By Release
 * Improvements and fixes to OpenBSD fact gathering.
 * Updated `make deb` to use pbuilder. Use `make local_deb` for the previous non-pbuilder build.
 * Fixed Windows async to avoid blocking due to handle inheritance.
-* Fixed bugs in the mount module on older Linux kernels and *BSDs
+* Fixed bugs in the mount module on older Linux kernels and BSDs
 * Various minor fixes for Python 3
 * Inserted some checks for jinja2-2.9, which can cause some issues with Ansible currently.
 
+<a id="2.2"></a>
 
 ## 2.2 "The Battle of Evermore" - 2016-11-01
 
@@ -940,11 +997,15 @@ Notice given that the following will be removed in Ansible 2.4:
   * nxos_template
   * ops_template
 
+<a id="2.1.4"></a>
+
 ## 2.1.4 "The Song Remains the Same" - 2017-01-16
 
 * Security fix for CVE-2016-9587 - An attacker with control over a client system being managed by Ansible and the ability to send facts back to the Ansible server could use this flaw to execute arbitrary code on the Ansible server as the user and group Ansible is running as.
 * Fixed a bug with conditionals in loops, where undefined variables and other errors will defer raising the error until the conditional has been evaluated.
 * Added a version check for jinja2-2.9, which does not fully work with Ansible currently.
+
+<a id="2.1.3"></a>
 
 ## 2.1.3 "The Song Remains the Same" - 2016-11-04
 
@@ -958,10 +1019,12 @@ Notice given that the following will be removed in Ansible 2.4:
   login_password as no_log so the password is obscured when logging.
 * Fixed several bugs related to locating files relative to role/playbook directories.
 * Fixed a bug in the way hosts were tested for failed states, resulting in incorrectly skipped block sessions.
-* Fixed a bug in the way our custom JSON encoder is used for the to_json* filters.
+* Fixed a bug in the way our custom JSON encoder is used for the `to_json*` filters.
 * Fixed some bugs related to the use of non-ascii characters in become passwords.
 * Fixed a bug with Azure modules which may be using the latest rc6 library.
 * Backported some docker_common fixes.
+
+<a id="2.1.2"></a>
 
 ## 2.1.2 "The Song Remains the Same" - 2016-09-29
 
@@ -1024,6 +1087,8 @@ Module fixes:
   Custom action plugins using `_fixup_perms` will require changes unless they already use `recursive=False`.
   Use `_fixup_perms2` if support for previous releases is not required.
   Otherwise use `_fixup_perms` with `recursive=False`.
+
+<a id="2.1"></a>
 
 ## 2.1 "The Song Remains the Same"
 
@@ -1212,6 +1277,8 @@ Module fixes:
   completely in 2.3, after which time it will be an error.
 * play_hosts magic variable, use ansible_play_batch or ansible_play_hosts instead.
 
+<a id="2.0.2"></a>
+
 ## 2.0.2 "Over the Hills and Far Away"
 
 * Backport of the 2.1 feature to ensure per-item callbacks are sent as they occur,
@@ -1253,9 +1320,11 @@ Module fixes:
   permissions on the temporary file too leniently on a temporary file that was
   executed as a script.  Addresses CVE-2016-3096
 * Fix a bug in the uri module where setting headers via module params that
-  start with HEADER_ were causing a traceback.
+  start with `HEADER_` were causing a traceback.
 * Fix bug in the free strategy that was causing it to synchronize its workers
   after every task (making it a lot more like linear than it should have been).
+
+<a id="2.0.1"></a>
 
 ## 2.0.1 "Over the Hills and Far Away"
 
@@ -1264,7 +1333,7 @@ Module fixes:
   running rsync.  In 1.9.x and previous, sudo was run on the host that rsync
   connected to.  2.0.1 restores the 1.9.x behaviour.
 * Additionally, several other problems with where synchronize chose to run when
-  combined with delegate_to were fixed.  In particular, if a playbook targeted
+  combined with delegate_to were fixed.  In particular, if a playbook targetted
   localhost and then delegated_to a remote host the prior behavior (in 1.9.x
   and 2.0.0.x) was to copy files between the src and destination directories on
   the delegated host.  This has now been fixed to copy between localhost and
@@ -1297,6 +1366,8 @@ Module fixes:
 * Fix to make implicit fact gathering task correctly inherit settings from play,
   this might cause an error if settings environment on play depending on 'ansible_env'
   which was previouslly ignored
+
+<a id="2.0"></a>
 
 ## 2.0 "Over the Hills and Far Away" - Jan 12, 2016
 

@@ -1,26 +1,37 @@
 # -*- coding: utf-8 -*-
 
+# This code is part of Ansible, but is an independent component
+
+# This particular file snippet, and this file snippet only, is BSD licensed.
+# Modules you write using this snippet, which is embedded dynamically by Ansible
+# still belong to the author of the module, and may assign their own license
+# to the complete work.
+
 # Copyright 2017 Dag Wieers <dag@wieers.com>
 # Copyright 2017 Swetha Chunduri (@schunduri)
+# All rights reserved.
 
-# This file is part of Ansible by Red Hat
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
 #
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above copyright notice,
+#      this list of conditions and the following disclaimer in the documentation
+#      and/or other materials provided with the distribution.
 #
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+# USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
 
-from ansible.module_utils.basic import get_exception
 from ansible.module_utils.urls import fetch_url
 from ansible.module_utils._text import to_bytes
 
@@ -45,6 +56,7 @@ aci_argument_spec = dict(
     password=dict(type='str', required=True, no_log=True),
     protocol=dict(type='str', removed_in_version='2.6'),  # Deprecated in v2.6
     timeout=dict(type='int', default=30),
+    use_proxy=dict(type='bool', default=True),
     use_ssl=dict(type='bool', default=True),
     validate_certs=dict(type='bool', default=True),
 )
@@ -67,8 +79,7 @@ def aci_response_json(result, rawoutput):
     ''' Handle APIC JSON response output '''
     try:
         result.update(json.loads(rawoutput))
-    except:
-        e = get_exception()
+    except Exception as e:
         # Expose RAW output for troubleshooting
         result.update(raw=rawoutput, error_code=-1, error_text="Unable to parse output as JSON, see 'raw' output. %s" % e)
         return
@@ -84,8 +95,7 @@ def aci_response_xml(result, rawoutput):
     try:
         xml = lxml.etree.fromstring(to_bytes(rawoutput))
         xmldata = cobra.data(xml)
-    except:
-        e = get_exception()
+    except Exception as e:
         # Expose RAW output for troubleshooting
         result.update(raw=rawoutput, error_code=-1, error_text="Unable to parse output as XML, see 'raw' output. %s" % e)
         return
@@ -127,7 +137,9 @@ class ACIModule(object):
 
         # Handle deprecated method/action parameter
         if self.params['method']:
-            self.module.deprecate("Parameter 'method' or 'action' is deprecated, please use 'state' instead", '2.6')
+            # Deprecate only if state was a valid option (not for aci_rest)
+            if self.module.argument_spec('state', False):
+                self.module.deprecate("Parameter 'method' or 'action' is deprecated, please use 'state' instead", '2.6')
             method_map = dict(delete='absent', get='query', post='present')
             self.params['state'] = method_map[self.params['method']]
         else:
@@ -143,7 +155,11 @@ class ACIModule(object):
         # Perform login request
         url = '%(protocol)s://%(hostname)s/api/aaaLogin.json' % self.params
         payload = {'aaaUser': {'attributes': {'name': self.params['username'], 'pwd': self.params['password']}}}
-        resp, auth = fetch_url(self.module, url, data=json.dumps(payload), method='POST', timeout=self.params['timeout'])
+        resp, auth = fetch_url(self.module, url,
+                               data=json.dumps(payload),
+                               method='POST',
+                               timeout=self.params['timeout'],
+                               use_proxy=self.params['use_proxy'])
 
         # Handle APIC response
         if auth['status'] != 200:
@@ -168,12 +184,13 @@ class ACIModule(object):
 
         # Perform request
         self.result['url'] = '%(protocol)s://%(hostname)s/' % self.params + path.lstrip('/')
-        resp, info = fetch_url(self.module,
-                               url=self.result['url'],
+        resp, info = fetch_url(self.module, self.result['url'],
                                data=payload,
+                               headers=self.headers,
                                method=self.params['method'].upper(),
                                timeout=self.params['timeout'],
-                               headers=self.headers)
+                               use_proxy=self.params['use_proxy'])
+
         self.result['response'] = info['msg']
         self.result['status'] = info['status']
 
@@ -189,23 +206,15 @@ class ACIModule(object):
 
         aci_response_json(self.result, resp.read())
 
-    def request_diff(self, path, payload=None):
-        ''' Perform a request, including a proper diff output '''
-        self.result['diff'] = dict()
-        self.result['diff']['before'] = self.query()
-        self.request(path, payload=payload)
-        # TODO: Check if we can use the request output for the 'after' diff
-        self.result['diff']['after'] = self.query()
-
-        if self.result['diff']['before'] != self.result['diff']['after']:
-            self.result['changed'] = True
-
     def query(self, path):
         ''' Perform a query with no payload '''
         url = '%(protocol)s://%(hostname)s/' % self.params + path.lstrip('/')
-        resp, query = fetch_url(self.module, url=url, data=None, method='GET',
+        resp, query = fetch_url(self.module, url,
+                                data=None,
+                                headers=self.headers,
+                                method='GET',
                                 timeout=self.params['timeout'],
-                                headers=self.headers)
+                                use_proxy=self.params['use_proxy'])
 
         # Handle APIC response
         if query['status'] != 200:
@@ -222,3 +231,277 @@ class ACIModule(object):
         query = json.loads(resp.read())
 
         return json.dumps(query['imdata'], sort_keys=True, indent=2) + '\n'
+
+    def request_diff(self, path, payload=None):
+        ''' Perform a request, including a proper diff output '''
+        self.result['diff'] = dict()
+        self.result['diff']['before'] = self.query(path)
+        self.request(path, payload=payload)
+        # TODO: Check if we can use the request output for the 'after' diff
+        self.result['diff']['after'] = self.query(path)
+
+        if self.result['diff']['before'] != self.result['diff']['after']:
+            self.result['changed'] = True
+
+    def delete_config(self):
+        """
+        This method is used to handle the logic when the modules state is equal to absent. The method only pushes a change if
+        the object exists, and if check_mode is Fasle. A successful change will mark the module as changed.
+        """
+        self.result['proposed'] = {}
+
+        if not self.result['existing']:
+            return
+
+        elif not self.module.check_mode:
+            resp, info = fetch_url(self.module, self.result['url'],
+                                   headers=self.headers,
+                                   method='DELETE',
+                                   timeout=self.params['timeout'],
+                                   use_proxy=self.params['use_proxy'])
+
+            self.result['response'] = info['msg']
+            self.result['status'] = info['status']
+            self.result['method'] = 'DELETE'
+
+            # Handle APIC response
+            if info['status'] == 200:
+                self.result['changed'] = True
+                aci_response_json(self.result, resp.read())
+            else:
+                try:
+                    # APIC error
+                    aci_response_json(self.result, info['body'])
+                    self.module.fail_json(msg='Request failed: %(error_code)s %(error_text)s' % self.result, **self.result)
+                except KeyError:
+                    # Connection error
+                    self.module.fail_json(msg='Request failed for %(url)s. %(msg)s' % info)
+        else:
+            self.result['changed'] = True
+            self.result['method'] = 'DELETE'
+
+    def get_diff(self, aci_class):
+        """
+        This method is used to get the difference between the proposed and existing configurations. Each module
+        should call the get_existing method before this method, and add the proposed config to the module results
+        using the module's config parameters. The new config will added to the self.result dictionary.
+
+        :param aci_class: Type str.
+                          This is the root dictionary key for the MO's configuration body, or the ACI class of the MO.
+        """
+        proposed_config = self.result['proposed'][aci_class]['attributes']
+        if self.result['existing']:
+            existing_config = self.result['existing'][0][aci_class]['attributes']
+            config = {}
+
+            # values are strings, so any diff between proposed and existing can be a straight replace
+            for key, value in proposed_config.items():
+                existing_field = existing_config.get(key)
+                if value != existing_field:
+                    config[key] = value
+
+            # add name back to config only if the configs do not match
+            if config:
+                # TODO: If URLs are built with the object's name, then we should be able to leave off adding the name back
+                # config["name"] = proposed_config["name"]
+                config = {aci_class: {'attributes': config}}
+
+            # check for updates to child configs and update new config dictionary
+            children = self.get_diff_children(aci_class)
+            if children and config:
+                config[aci_class].update({'children': children})
+            elif children:
+                config = {aci_class: {'attributes': {}, 'children': children}}
+
+        else:
+            config = self.result['proposed']
+
+        self.result['config'] = config
+
+    @staticmethod
+    def get_diff_child(child_class, proposed_child, existing_child):
+        """
+        This method is used to get the difference between a proposed and existing child configs. The get_nested_config()
+        method should be used to return the proposed and existing config portions of child.
+
+        :param child_class: Type str.
+                            The root class (dict key) for the child dictionary.
+        :param proposed_child: Type dict.
+                               The config portion of the proposed child dictionary.
+        :param existing_child: Type dict.
+                               The config portion of the existing child dictionary.
+        :return: The child config with only values that are updated. If the proposed dictionary has no updates to make
+                 to what exists on the APIC, then None is returned.
+        """
+        update_config = {child_class: {'attributes': {}}}
+        for key, value in proposed_child.items():
+            if value != existing_child[key]:
+                update_config[child_class]['attributes'][key] = value
+
+        if not update_config[child_class]['attributes']:
+            return None
+
+        return update_config
+
+    def get_diff_children(self, aci_class):
+        """
+        This method is used to retrieve the updated child configs by comparing the proposed children configs
+        agains the objects existing children configs.
+
+        :param aci_class: Type str.
+                          This is the root dictionary key for the MO's configuration body, or the ACI class of the MO.
+        :return: The list of updated child config dictionaries. None is returned if there are no changes to the child
+                 configurations.
+        """
+        proposed_children = self.result['proposed'][aci_class].get('children')
+        if proposed_children:
+            child_updates = []
+            existing_children = self.result['existing'][0][aci_class].get('children', [])
+
+            # Loop through proposed child configs and compare against existing child configuration
+            for child in proposed_children:
+                child_class, proposed_child, existing_child = self.get_nested_config(child, existing_children)
+
+                if existing_child is None:
+                    child_update = child
+                else:
+                    child_update = self.get_diff_child(child_class, proposed_child, existing_child)
+
+                # Update list of updated child configs only if the child config is different than what exists
+                if child_update:
+                    child_updates.append(child_update)
+        else:
+            return None
+
+        return child_updates
+
+    def get_existing(self, filter_string=""):
+        """
+        This method is used to get the existing object(s) based on the path specified in the module. Each module should
+        build the URL so that if the object's name is supplied, then it will retrieve the configuration for that particular
+        object, but if no name is supplied, then it will retrieve all MOs for the class. Following this method will ensure
+        that this method can be used to supply the existing configuration when using the get_diff method. The response, status,
+        and existing configuration will be added to the self.result dictionary.
+
+        :param filter_string: Type str.
+                             The filter to use in order to retrieve the filtered configuration.
+        """
+        uri = self.result['url'] + filter_string
+        resp, info = fetch_url(self.module, uri,
+                               headers=self.headers,
+                               method='GET',
+                               timeout=self.params['timeout'],
+                               use_proxy=self.params['use_proxy'])
+        self.result['response'] = info['msg']
+        self.result['status'] = info['status']
+        self.result['method'] = 'GET'
+
+        # Handle APIC response
+        if info['status'] == 200:
+            self.result['existing'] = json.loads(resp.read())['imdata']
+        else:
+            try:
+                # APIC error
+                aci_response_json(self.result, info['body'])
+                self.module.fail_json(msg='Request failed: %(error_code)s %(error_text)s' % self.result, **self.result)
+            except KeyError:
+                # Connection error
+                self.module.fail_json(msg='Request failed for %(url)s. %(msg)s' % info)
+
+    @staticmethod
+    def get_nested_config(proposed_child, existing_children):
+        """
+        This method is used for stiping off the outer layers of the child dictionaries so only the configuration
+        key, value pairs are returned.
+
+        :param proposed_child: Type dict.
+                               The dictionary that represents the child config.
+        :param existing_children: Type list.
+                                  The list of existing child config dictionaries.
+        :return: The child's class as str (root config dict key), the child's proposed config dict, and the child's
+                 existing configuration dict.
+        """
+        for key in proposed_child.keys():
+            child_class = key
+            proposed_config = proposed_child[key]['attributes']
+            existing_config = None
+
+            # get existing dictionary from the list of existing to use for comparison
+            for child in existing_children:
+                if child.get(child_class):
+                    existing_config = child[key]['attributes']
+                    break
+
+        return child_class, proposed_config, existing_config
+
+    def payload(self, aci_class, class_config, child_configs=None):
+        """
+        This method is used to dynamically build the proposed configuration dictionary from the config related parameters
+        passed into the module. All values that were not passed values from the playbook task will be removed so as to not
+        inadvertently change configurations.
+
+        :param aci_class: Type str
+                          This is the root dictionary key for the MO's configuration body, or the ACI class of the MO.
+        :param class_config: Type dict
+                             This is the configuration of the MO using the dictionary keys expected by the API
+        :param child_configs: Type list
+                              This is a list of child dictionaries associated with the MOs config. The list should only
+                              include child objects that are used to associate two MOs together. Children that represent
+                              MOs should have their own module.
+        """
+        proposed = dict((k, str(v)) for k, v in class_config.items() if v is not None)
+        self.result['proposed'] = {aci_class: {'attributes': proposed}}
+
+        # add child objects to proposed
+        if child_configs:
+            children = []
+            for child in child_configs:
+                has_value = False
+                for root_key in child.keys():
+                    for final_keys, values in child[root_key]['attributes'].items():
+                        if values is None:
+                            child[root_key]['attributes'].pop(final_keys)
+                        else:
+                            child[root_key]['attributes'][final_keys] = str(values)
+                            has_value = True
+                if has_value:
+                    children.append(child)
+
+            if children:
+                self.result['proposed'][aci_class].update(dict(children=children))
+
+    def post_config(self):
+        """
+        This method is used to handle the logic when the modules state is equal to present. The method only pushes a change if
+        the object has differences than what exists on the APIC, and if check_mode is Fasle. A successful change will mark the
+        module as changed.
+        """
+        if not self.result['config']:
+            return
+        elif not self.module.check_mode:
+            resp, info = fetch_url(self.module, self.result['url'],
+                                   data=json.dumps(self.result['config']),
+                                   headers=self.headers,
+                                   method='POST',
+                                   timeout=self.params['timeout'],
+                                   use_proxy=self.params['use_proxy'])
+
+            self.result['response'] = info['msg']
+            self.result['status'] = info['status']
+            self.result['method'] = 'POST'
+
+            # Handle APIC response
+            if info['status'] == 200:
+                self.result['changed'] = True
+                aci_response_json(self.result, resp.read())
+            else:
+                try:
+                    # APIC error
+                    aci_response_json(self.result, info['body'])
+                    self.module.fail_json(msg='Request failed: %(error_code)s %(error_text)s' % self.result, **self.result)
+                except KeyError:
+                    # Connection error
+                    self.module.fail_json(msg='Request failed for %(url)s. %(msg)s' % info)
+        else:
+            self.result['changed'] = True
+            self.result['method'] = 'POST'

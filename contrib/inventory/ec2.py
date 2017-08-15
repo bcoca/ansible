@@ -440,6 +440,7 @@ class Ec2Inventory(object):
             'group_by_ami_id',
             'group_by_instance_type',
             'group_by_instance_state',
+            'group_by_platform',
             'group_by_key_pair',
             'group_by_vpc_id',
             'group_by_security_group',
@@ -806,7 +807,7 @@ class Ec2Inventory(object):
             errors.append(' - AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment vars found but may not be correct')
 
         boto_paths = ['/etc/boto.cfg', '~/.boto', '~/.aws/credentials']
-        boto_config_found = list(p for p in boto_paths if os.path.isfile(os.path.expanduser(p)))
+        boto_config_found = [p for p in boto_paths if os.path.isfile(os.path.expanduser(p))]
         if len(boto_config_found) > 0:
             errors.append(" - Boto configs found at '%s', but the credentials contained may not be correct" % ', '.join(boto_config_found))
         else:
@@ -929,6 +930,16 @@ class Ec2Inventory(object):
             self.push(self.inventory, state_name, hostname)
             if self.nested_groups:
                 self.push_group(self.inventory, 'instance_states', state_name)
+
+        # Inventory: Group by platform
+        if self.group_by_platform:
+            if instance.platform:
+                platform = self.to_safe('platform_' + instance.platform)
+            else:
+                platform = self.to_safe('platform_undefined')
+            self.push(self.inventory, platform, hostname)
+            if self.nested_groups:
+                self.push_group(self.inventory, 'platforms', platform)
 
         # Inventory: Group by key pair
         if self.group_by_key_pair and instance.key_name:
@@ -1079,6 +1090,24 @@ class Ec2Inventory(object):
             except AttributeError:
                 self.fail_with_error('\n'.join(['Package boto seems a bit older.',
                                                 'Please upgrade boto >= 2.3.0.']))
+        # Inventory: Group by tag keys
+        if self.group_by_tag_keys:
+            for k, v in instance.tags.items():
+                if self.expand_csv_tags and v and ',' in v:
+                    values = map(lambda x: x.strip(), v.split(','))
+                else:
+                    values = [v]
+
+                for v in values:
+                    if v:
+                        key = self.to_safe("tag_" + k + "=" + v)
+                    else:
+                        key = self.to_safe("tag_" + k)
+                    self.push(self.inventory, key, hostname)
+                    if self.nested_groups:
+                        self.push_group(self.inventory, 'tags', self.to_safe("tag_" + k))
+                        if v:
+                            self.push_group(self.inventory, self.to_safe("tag_" + k), key)
 
         # Inventory: Group by engine
         if self.group_by_rds_engine:
@@ -1091,6 +1120,12 @@ class Ec2Inventory(object):
             self.push(self.inventory, self.to_safe("rds_parameter_group_" + instance.parameter_group.name), hostname)
             if self.nested_groups:
                 self.push_group(self.inventory, 'rds_parameter_groups', self.to_safe("rds_parameter_group_" + instance.parameter_group.name))
+
+        # Global Tag: instances without tags
+        if self.group_by_tag_none and len(instance.tags) == 0:
+            self.push(self.inventory, 'tag_none', hostname)
+            if self.nested_groups:
+                self.push_group(self.inventory, 'tags', 'tag_none')
 
         # Global Tag: all RDS instances
         self.push(self.inventory, 'rds', hostname)

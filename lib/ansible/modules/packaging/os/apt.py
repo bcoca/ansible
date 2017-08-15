@@ -5,19 +5,11 @@
 # Written by Matthew Williams <matthew@flowroute.com>
 # Based on yum module written by Seth Vidal <skvidal at fedoraproject.org>
 #
-# This module is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This software is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this software.  If not, see <http://www.gnu.org/licenses/>.
-#
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+
 
 ANSIBLE_METADATA = {'metadata_version': '1.0',
                     'status': ['stableinterface'],
@@ -57,6 +49,7 @@ options:
   cache_valid_time:
     description:
       - Update the apt cache if its older than the I(cache_valid_time). This option is set in seconds.
+        As of Ansible 2.4, this implicitly sets I(update_cache) if set.
     required: false
     default: 0
   purge:
@@ -96,6 +89,7 @@ options:
       - 'If full, performs an aptitude full-upgrade.'
       - 'If dist, performs an apt-get dist-upgrade.'
       - 'Note: This does not upgrade a specific package, use state=latest for that.'
+      - 'Note: Since 2.4, apt-get is used as a fall-back if aptitude is not present.'
     version_added: "1.1"
     required: false
     default: "no"
@@ -133,14 +127,21 @@ options:
     required: false
     default: false
     version_added: "2.1"
+  force_apt_get:
+    description:
+      - Force usage of apt-get instead of aptitude
+    required: false
+    default: false
+    version_added: "2.4"
 requirements:
    - python-apt (python 2)
    - python3-apt (python 3)
-   - aptitude
+   - aptitude (before 2.4)
 author: "Matthew Williams (@mgwilliams)"
 notes:
-   - Three of the upgrade modes (C(full), C(safe) and its alias C(yes)) require C(aptitude), otherwise
-     C(apt-get) suffices.
+   - Three of the upgrade modes (C(full), C(safe) and its alias C(yes))
+     required C(aptitude) up to 2.3, since 2.4 C(apt-get) is used as a
+     fall-back.
 '''
 
 EXAMPLES = '''
@@ -718,6 +719,7 @@ def cleanup(m, purge=False, force=False, operation=None,
 
 
 def upgrade(m, mode="yes", force=False, default_release=None,
+            use_apt_get=False,
             dpkg_options=expand_dpkg_options(DPKG_OPTIONS)):
     if m.check_mode:
         check_arg = '--simulate'
@@ -726,19 +728,23 @@ def upgrade(m, mode="yes", force=False, default_release=None,
 
     apt_cmd = None
     prompt_regex = None
-    if mode == "dist":
+    if mode == "dist" or (mode == "full" and use_apt_get):
         # apt-get dist-upgrade
         apt_cmd = APT_GET_CMD
         upgrade_command = "dist-upgrade"
-    elif mode == "full":
+    elif mode == "full" and not use_apt_get:
         # aptitude full-upgrade
         apt_cmd = APTITUDE_CMD
         upgrade_command = "full-upgrade"
     else:
-        # aptitude safe-upgrade # mode=yes # default
-        apt_cmd = APTITUDE_CMD
-        upgrade_command = "safe-upgrade"
-        prompt_regex = r"(^Do you want to ignore this warning and proceed anyway\?|^\*\*\*.*\[default=.*\])"
+        if use_apt_get:
+            apt_cmd = APT_GET_CMD
+            upgrade_command = "upgrade --with-new-pkgs --autoremove"
+        else:
+            # aptitude safe-upgrade # mode=yes # default
+            apt_cmd = APTITUDE_CMD
+            upgrade_command = "safe-upgrade"
+            prompt_regex = r"(^Do you want to ignore this warning and proceed anyway\?|^\*\*\*.*\[default=.*\])"
 
     if force:
         if apt_cmd == APT_GET_CMD:
@@ -867,6 +873,7 @@ def main():
             autoremove=dict(type='bool', default='no'),
             autoclean=dict(type='bool', default='no'),
             only_upgrade=dict(type='bool', default=False),
+            force_apt_get=dict(type='bool', default=False),
             allow_unauthenticated=dict(default='no', aliases=['allow-unauthenticated'], type='bool'),
         ),
         mutually_exclusive=[['package', 'upgrade', 'deb']],
@@ -901,8 +908,11 @@ def main():
     if p['upgrade'] == 'no':
         p['upgrade'] = None
 
-    if not APTITUDE_CMD and p.get('upgrade', None) in ['full', 'safe', 'yes']:
-        module.fail_json(msg="Could not find aptitude. Please ensure it is installed.")
+    use_apt_get = p['force_apt_get']
+
+    if not use_apt_get and not APTITUDE_CMD and p.get('upgrade', None) in ['full', 'safe', 'yes']:
+        module.warn("Could not find aptitude. Using apt-get instead")
+        use_apt_get = True
 
     updated_cache = False
     updated_cache_time = 0
@@ -934,7 +944,7 @@ def main():
         # Cache valid time is default 0, which will update the cache if
         #  needed and `update_cache` was set to true
         updated_cache = False
-        if p['update_cache']:
+        if p['update_cache'] or p['cache_valid_time']:
             now = datetime.datetime.now()
             tdelta = datetime.timedelta(seconds=p['cache_valid_time'])
             if not mtimestamp + tdelta >= now:
@@ -963,7 +973,7 @@ def main():
         force_yes = p['force']
 
         if p['upgrade']:
-            upgrade(module, p['upgrade'], force_yes, p['default_release'], dpkg_options)
+            upgrade(module, p['upgrade'], force_yes, p['default_release'], use_apt_get, dpkg_options)
 
         if p['deb']:
             if p['state'] != 'present':
@@ -983,7 +993,7 @@ def main():
         if latest and all_installed:
             if packages:
                 module.fail_json(msg='unable to install additional packages when ugrading all installed packages')
-            upgrade(module, 'yes', force_yes, p['default_release'], dpkg_options)
+            upgrade(module, 'yes', force_yes, p['default_release'], use_apt_get, dpkg_options)
 
         if packages:
             for package in packages:
