@@ -58,6 +58,7 @@ from collections import MutableMapping
 
 from ansible import constants as C
 from ansible.errors import AnsibleParserError
+from ansible.plugins.cache import FactCache
 from ansible.plugins.inventory import BaseInventoryPlugin
 from ansible.module_utils._text import to_native
 from ansible.utils.vars import combine_vars
@@ -101,14 +102,15 @@ class InventoryModule(BaseInventoryPlugin):
             raise AnsibleParserError("%s is not a constructed groups config file, plugin entry must be 'constructed'" % (to_native(path)))
 
         strict = data.get('strict', False)
+        fact_cache = FactCache()
         try:
             # Go over hosts (less var copies)
             for host in inventory.hosts:
 
                 # get available variables to templar
                 hostvars = inventory.hosts[host].get_vars()
-                if host in inventory.cache:  # adds facts if cache is active
-                    hostvars = combine_vars(hostvars, inventory.cache[host])
+                if host in fact_cache:  # adds facts if cache is active
+                    hostvars = combine_vars(hostvars, fact_cache[host])
 
                 # create composite vars
                 self._set_composite_vars(data.get('compose'), hostvars, host, strict=strict)

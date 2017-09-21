@@ -12,6 +12,8 @@ DOCUMENTATION = '''
         - Get inventory hosts from the local virtualbox installation.
         - Uses a <name>.vbox.yaml (or .vbox.yml) YAML configuration file.
         - The inventory_hostname is always the 'Name' of the virtualbox instance.
+    extends_documentation_fragment:
+      - constructed
     options:
         running_only:
             description: toggles showing all vms vs only those currently running
@@ -24,14 +26,6 @@ DOCUMENTATION = '''
             default: "/VirtualBox/GuestInfo/Net/0/V4/IP"
         query:
             description: create vars from virtualbox properties
-            type: dictionary
-            default: {}
-        compose:
-            description: create vars from jinja2 expressions, these are created AFTER the query block
-            type: dictionary
-            default: {}
-        groups:
-            description: add hosts to group based on Jinja2 conditionals, these also run after query block
             type: dictionary
             default: {}
 '''
@@ -176,9 +170,9 @@ class InventoryModule(BaseInventoryPlugin):
             raise AnsibleParserError("Incorrect plugin name in file: %s" % config_data.get('plugin', 'none found'))
 
         source_data = None
-        if cache and cache_key in inventory.cache:
+        if cache and cache_key in self._cache:
             try:
-                source_data = inventory.cache[cache_key]
+                source_data = self._cache[cache_key]
             except KeyError:
                 pass
 
@@ -203,6 +197,6 @@ class InventoryModule(BaseInventoryPlugin):
                 AnsibleParserError(to_native(e))
 
             source_data = p.stdout.read()
-            inventory.cache[cache_key] = to_text(source_data, errors='surrogate_or_strict')
+            self._cache[cache_key] = to_text(source_data, errors='surrogate_or_strict')
 
         self._populate_from_source(source_data.splitlines(), config_data)
