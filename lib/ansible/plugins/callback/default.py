@@ -189,8 +189,6 @@ class CallbackModule(CallbackBase):
                 self._display.display(diff)
 
     def v2_runner_item_on_ok(self, result):
-        delegated_vars = result._result.get('_ansible_delegated_vars', None)
-        self._clean_results(result._result, result._task.action)
         if isinstance(result._task, TaskInclude):
             return
         elif result._result.get('changed', False):
@@ -199,7 +197,9 @@ class CallbackModule(CallbackBase):
         else:
             msg = 'ok'
             color = C.COLOR_OK
+        self._clean_results(result._result, result._task.action)
 
+        delegated_vars = result._result.get('_ansible_delegated_vars', None)
         if delegated_vars:
             msg += ": [%s -> %s]" % (result._host.get_name(), delegated_vars['ansible_host'])
         else:
