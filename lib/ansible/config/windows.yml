@@ -1,0 +1,125 @@
+# Copyright (c) 2018 Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+---
+ANSIBLE_PIPELINING:
+  name: Connection pipelining
+  default: True
+  description:
+    - Pipelining, if supported by the connection plugin, reduces the number of network operations required to execute a module on the remote server,
+      by executing many Ansible modules without actual file transfer.
+    - This can result in a very significant performance improvement when enabled.
+    - "However this conflicts with privilege escalation (become). For example, when using 'sudo:' operations you must first
+      disable 'requiretty' in /etc/sudoers on all managed hosts, which is why it is disabled by default."
+  env:
+    - name: ANSIBLE_PIPELINING
+    - name: ANSIBLE_SSH_PIPELINING
+  ini:
+  - section: connection
+    key: pipelining
+  - section: ssh_connection
+    key: pipelining
+  type: boolean
+  yaml: {key: plugins.connection.pipelining}
+DEFAULT_BECOME_METHOD:
+  name: Choose privilege escalation method
+  default: 'runas'
+  description: Privilege escalation method to use when `become` is enabled. For windows only 'runas' is currently available.
+  env: [{name: ANSIBLE_BECOME_METHOD}]
+  ini:
+    - {section: privilege_escalation, key: become_method}
+DEFAULT_BECOME_USER:
+  # FIXME: should really be blank and make -u passing optional depending on it
+  name: Set the user you 'become' via privlege escalation
+  default: Administrator
+  description: The user your login/remote user 'becomes' when using privilege escalation, most systems will use 'root' when no user is specified.
+  env: [{name: ANSIBLE_BECOME_USER}]
+  ini:
+  - {key: become_user, section: privilege_escalation}
+  yaml: {key: become.user}
+DEFAULT_EXECUTABLE:
+  name: Target shell executable
+  default: powershell.exe
+  description:
+    - "This indicates the command to use to spawn a shell under for Ansible's execution needs on a target.
+      Users may need to change this in rare instances when shell usage is constrained, but in most cases it may be left as is."
+  env: [{name: ANSIBLE_EXECUTABLE}]
+  ini:
+  - {key: executable, section: defaults}
+DEFAULT_MODULE_LANG:
+  name: Target language environment
+  default: latin1
+  description:
+    - "Language locale setting to use for modules when they execute on the target."
+    - "This is only used if DEFAULT_MODULE_SET_LOCALE is set to true"
+  env: [{name: ANSIBLE_MODULE_LANG}]
+  ini:
+  - {key: module_lang, section: defaults}
+  deprecated:
+    why: Modules are coded to set their own locale if needed for screenscraping
+    version: "2.9"
+DEFAULT_MODULE_NAME:
+  name: Default adhoc module
+  default: win_command
+  description: "Module to use with the ``ansible`` AdHoc command, if none is specified via ``-m``."
+  env: []
+  ini:
+  - {key: module_name, section: defaults}
+DEFAULT_NO_TARGET_SYSLOG:
+  name: No syslog on target
+  default: True
+  description: Toggle Ansible logging to syslog on the target when it executes tasks.
+  env: [{name: ANSIBLE_NO_TARGET_SYSLOG}]
+  ini:
+  - {key: no_target_syslog, section: defaults}
+  type: boolean
+  yaml: {key: defaults.no_target_syslog}
+DEFAULT_REMOTE_PORT:
+  name: Remote port
+  default: ~
+  description: Port to use in remote connections, when blank it will use the connection plugin default.
+  env: [{name: ANSIBLE_REMOTE_PORT}]
+  ini:
+  - {key: remote_port, section: defaults}
+  type: integer
+  yaml: {key: defaults.remote_port}
+DEFAULT_REMOTE_USER:
+  name: Login/Remote User
+  default: guest
+  description:
+    - Sets the login user for the target machines
+    - "When blank it uses the connection plugin's default, normally the user currently executing Ansible."
+  env: [{name: ANSIBLE_REMOTE_USER}]
+  ini:
+  - {key: remote_user, section: defaults}
+DEFAULT_TIMEOUT:
+  name: Connection timeout
+  default: 30
+  description: This is the default timeout for connection plugins to use.
+  env: [{name: ANSIBLE_TIMEOUT}]
+  ini:
+  - {key: timeout, section: defaults}
+  type: integer
+DEFAULT_TRANSPORT:
+  name: Connection plugin
+  default: winrm
+  description: "Default connection plugin to use, for windows only winrm is currently available.
+  env: [{name: ANSIBLE_TRANSPORT}]
+  ini:
+  - {key: transport, section: defaults}
+HOST_KEY_CHECKING:
+  name: Check host keys
+  default: False
+  description: 'Set this to "False" if you want to avoid host key checking by the underlying tools Ansible uses to connect to the host'
+  env: [{name: ANSIBLE_HOST_KEY_CHECKING}]
+  ini:
+  - {key: host_key_checking, section: defaults}
+  type: boolean
+USE_PERSISTENT_CONNECTIONS:
+  name: Persistence
+  default: True
+  description: Toggles the use of persistence for connections.
+  env: [{name: ANSIBLE_USE_PERSISTENT_CONNECTIONS}]
+  ini:
+  - {key: use_persistent_connections, section: defaults}
+  type: boolean
+...
