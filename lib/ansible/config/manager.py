@@ -171,28 +171,18 @@ class ConfigManager(object):
 
     def __init__(self, conf_file=None, defs_file=None):
 
-        self._base_defs = {}
+        self._profile_defs = {'base': {}}
         self._plugins = {}
         self._parsers = {}
 
         self._config_file = conf_file
         self.data = ConfigData()
 
-        if defs_file is None:
-            # Create configuration definitions from source
-            b_defs_file = to_bytes('%s/base.yml' % os.path.dirname(__file__))
-        else:
-            b_defs_file = to_bytes(defs_file)
-
-        # consume definitions
-        if os.path.exists(b_defs_file):
-            with open(b_defs_file, 'rb') as config_def:
-                self._base_defs = yaml_load(config_def, Loader=SafeLoader)
-        else:
-            raise AnsibleError("Missing base configuration definition file (bad install?): %s" % to_native(b_defs_file))
+        # parse defintion file
+        self._parse_config_definition_file(defs_file)
 
         if self._config_file is None:
-            # set config using ini
+            # assume ini config ... find it using legacy paths
             self._config_file = find_ini_config_file()
 
         # consume configuration
@@ -203,6 +193,30 @@ class ConfigManager(object):
 
         # update constants
         self.update_config_data()
+
+    def _parse_config_definition_file(self, defs_file):
+
+        if defs_file is None:
+            # use default
+            defs_file = 'base.yml'
+
+        if not os.path.isabs(defs_file):
+            # if not absolute, path is relative to lib/ansible/config
+            b_defs_file = to_bytes('%s/%s' % (os.path.dirname(__file__), defs_file.replace('../', '')))
+        else:
+            b_defs_file = to_bytes(defs_file)
+
+        name = os.path.splitext(os.path.basename(defs_file))[0]
+
+        # Create configuration definitions from source
+        if os.path.exists(b_defs_file):
+            with open(b_defs_file, 'rb') as config_def:
+                if name != 'base':
+                    self._profile_defs[name] = combine_vars(self._profile_defs['base'], yaml_load(config_def, Loader=SafeLoader))
+                else:
+                    self._profile_defs[name] = yaml_load(config_def, Loader=SafeLoader)
+        else:
+            raise AnsibleError("Missing base configuration definition file (bad install?): %s" % to_native(b_defs_file))
 
     def _parse_config_file(self, cfile=None):
         ''' return flat configuration settings from file(s) '''
@@ -253,7 +267,7 @@ class ConfigManager(object):
 
         ret = {}
         if plugin_type is None:
-            ret = self._base_defs
+            ret = self._profile_defs['base']
         elif name is None:
             ret = self._plugins.get(plugin_type, {})
         else:
@@ -296,7 +310,7 @@ class ConfigManager(object):
         origin = None
         defs = {}
         if plugin_type is None:
-            defs = self._base_defs
+            defs = self._profile_defs['base']
         elif plugin_name is None:
             defs = self._plugins[plugin_type]
         else:
@@ -374,7 +388,9 @@ class ConfigManager(object):
         ''' really: update constants '''
 
         if defs is None:
-            defs = self._base_defs
+            defs = self._profile_defs['base']
+        else:
+            defs = self._profile_defs[defs]
 
         if configfile is None:
             configfile = self._config_file
