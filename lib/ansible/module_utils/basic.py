@@ -2327,7 +2327,7 @@ class AnsibleModule(object):
         self.add_path_info(kwargs)
 
         if 'invocation' not in kwargs:
-            kwargs['invocation'] = {'module_args': self.params}
+            kwargs['invocation'] = {'action': self._name, 'module_args': self.params}
 
         if 'warnings' in kwargs:
             if isinstance(kwargs['warnings'], list):
