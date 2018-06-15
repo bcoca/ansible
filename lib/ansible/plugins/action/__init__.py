@@ -859,6 +859,10 @@ class ActionBase(with_metaclass(ABCMeta, object)):
             txt = data.get('stderr', None) or u''
             data['stderr_lines'] = txt.splitlines()
 
+        # ensure we have a proper action
+        if 'invocation' in data and 'action' not in data['invocation']:
+            data['invocation']['action'] = self._task.action
+
         display.debug("done with _execute_module (%s, %s)" % (module_name, module_args))
         return data
 
