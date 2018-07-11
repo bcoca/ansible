@@ -150,6 +150,8 @@ def find_ini_config_file(warnings=None):
     ''' Load INI Config File order(first found is used): ENV, CWD, HOME, /etc/ansible '''
     # FIXME: eventually deprecate ini configs
 
+    warn_cwd_public = False
+
     path0 = os.getenv("ANSIBLE_CONFIG", None)
     if path0 is not None:
         path0 = unfrackpath(path0, follow=False)
@@ -159,8 +161,7 @@ def find_ini_config_file(warnings=None):
         path1 = os.getcwd()
         perms1 = os.stat(path1)
         if perms1.st_mode & stat.S_IWOTH:
-            if warnings is not None:
-                warnings.add("Ansible is in a world writable directory (%s), ignoring it as an ansible.cfg source." % to_text(path1))
+            warn_cwd_public = True
             path1 = None
         else:
             path1 += "/ansible.cfg"
@@ -175,6 +176,8 @@ def find_ini_config_file(warnings=None):
     else:
         path = None
 
+    if warn_cwd_public and warnings is not None and path != os.getcwd() + "/ansible.cfg":
+        warnings.add("Ansible is in a world writable directory (%s), skipped from possible ansible.cfg sources list." % to_text(path1))
     return path
 
 
