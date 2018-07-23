@@ -1,0 +1,2 @@
+bugfixes:
+    - ensure ansible_local is always present, even if empty
