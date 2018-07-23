@@ -176,7 +176,7 @@ class VariableManager:
 
         display.debug("in VariableManager get_vars()")
 
-        all_vars = dict()
+        all_vars = {}
         magic_variables = self._get_magic_variables(
             play=play,
             host=host,
@@ -308,15 +308,18 @@ class VariableManager:
 
             # finally, the facts caches for this host, if it exists
             try:
+                # hosts always have local, even if empty
+                all_vars['ansible_local'] = {}
+
                 facts = wrap_var(self._fact_cache.get(host.name, {}))
                 all_vars.update(namespace_facts(facts))
 
                 # push facts to main namespace
                 if C.INJECT_FACTS_AS_VARS:
                     all_vars = combine_vars(all_vars, wrap_var(clean_facts(facts)))
-                else:
+                elif 'ansible_local' in facts:
                     # always 'promote' ansible_local
-                    all_vars = combine_vars(all_vars, wrap_var({'ansible_local': facts.get('ansible_local', {})}))
+                    all_vars = combine_vars(all_vars, wrap_var({'ansible_local': facts['ansible_local']}))
             except KeyError:
                 pass
 
