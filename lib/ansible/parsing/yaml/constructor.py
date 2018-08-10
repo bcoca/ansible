@@ -23,9 +23,10 @@ from yaml.constructor import SafeConstructor, ConstructorError
 from yaml.nodes import MappingNode
 
 from ansible.module_utils._text import to_bytes
+from ansible.module_utils.six import string_types
 from ansible.parsing.yaml.objects import AnsibleMapping, AnsibleSequence, AnsibleUnicode
 from ansible.parsing.yaml.objects import AnsibleVaultEncryptedUnicode
-from ansible.utils.unsafe_proxy import wrap_var
+from ansible.utils.unsafe_proxy import wrap_var, wrap_code
 from ansible.parsing.vault import VaultLib
 
 try:
@@ -118,6 +119,20 @@ class AnsibleConstructor(SafeConstructor):
     def construct_yaml_unsafe(self, node):
         return self.construct_yaml_str(node, unsafe=True)
 
+    def construct_jinja2_template(self, node):
+        if isinstance(node, string_types):
+            return u'{{%s}}' % AnsibleUnicode(self.construct_scalar(node))
+        raise ConstructorError(context=None, context_mark=None,
+                               problem="found !j2/!jinja2 but didn't get a templatable string.",
+                               problem_mark=node.start_mark,
+                               note=None)
+
+    def construct_python_expression(self, node):
+        raise ConstructorError(context=None, context_mark=None,
+                               problem="You really don't want this .. really!",
+                               problem_mark=node.start_mark,
+                               note=None)
+
     def _node_position_info(self, node):
         # the line number where the previous token has ended (plus empty lines)
         # Add one so that the first line is line 1 rather than line 0
@@ -133,32 +148,15 @@ class AnsibleConstructor(SafeConstructor):
         return (datasource, line, column)
 
 
-AnsibleConstructor.add_constructor(
-    u'tag:yaml.org,2002:map',
-    AnsibleConstructor.construct_yaml_map)
-
-AnsibleConstructor.add_constructor(
-    u'tag:yaml.org,2002:python/dict',
-    AnsibleConstructor.construct_yaml_map)
-
-AnsibleConstructor.add_constructor(
-    u'tag:yaml.org,2002:str',
-    AnsibleConstructor.construct_yaml_str)
-
-AnsibleConstructor.add_constructor(
-    u'tag:yaml.org,2002:python/unicode',
-    AnsibleConstructor.construct_yaml_str)
-
-AnsibleConstructor.add_constructor(
-    u'tag:yaml.org,2002:seq',
-    AnsibleConstructor.construct_yaml_seq)
-
-AnsibleConstructor.add_constructor(
-    u'!unsafe',
-    AnsibleConstructor.construct_yaml_unsafe)
-
-AnsibleConstructor.add_constructor(
-    u'!vault',
-    AnsibleConstructor.construct_vault_encrypted_unicode)
-
+AnsibleConstructor.add_constructor(u'tag:yaml.org,2002:map', AnsibleConstructor.construct_yaml_map)
+AnsibleConstructor.add_constructor(u'tag:yaml.org,2002:python/dict', AnsibleConstructor.construct_yaml_map)
+AnsibleConstructor.add_constructor(u'tag:yaml.org,2002:str', AnsibleConstructor.construct_yaml_str)
+AnsibleConstructor.add_constructor(u'tag:yaml.org,2002:python/unicode', AnsibleConstructor.construct_yaml_str)
+AnsibleConstructor.add_constructor(u'tag:yaml.org,2002:seq', AnsibleConstructor.construct_yaml_seq)
+AnsibleConstructor.add_constructor(u'!unsafe', AnsibleConstructor.construct_yaml_unsafe)
+AnsibleConstructor.add_constructor(u'!vault', AnsibleConstructor.construct_vault_encrypted_unicode)
 AnsibleConstructor.add_constructor(u'!vault-encrypted', AnsibleConstructor.construct_vault_encrypted_unicode)
+AnsibleConstructor.add_constructor(u'!j2', AnsibleConstructor.construct_jinja2_template)
+AnsibleConstructor.add_constructor(u'!jinja2', AnsibleConstructor.construct_jinja2_template)
+AnsibleConstructor.add_constructor(u'!p', AnsibleConstructor.construct_python_expression)
+AnsibleConstructor.add_constructor(u'!python', AnsibleConstructor.construct_python_expression)
