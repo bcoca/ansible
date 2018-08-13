@@ -415,6 +415,9 @@ class Templar:
 
         return ret
 
+    def get_available_variables(self):
+        return self._available_variables
+
     def set_available_variables(self, variables):
         '''
         Sets the list of template variables this Templar instance will use

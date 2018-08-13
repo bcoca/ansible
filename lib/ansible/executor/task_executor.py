@@ -704,8 +704,9 @@ class TaskExecutor:
         delegated_vars = variables.get('ansible_delegated_vars', dict()).get(self._task.delegate_to, dict()).copy()
         if len(delegated_vars) > 0:
             result["_ansible_delegated_vars"] = {'ansible_delegated_host': self._task.delegate_to}
-            for k in ('ansible_host', ):
-                result["_ansible_delegated_vars"][k] = delegated_vars.get(k)
+            templar.set_available_vars(delegated_vars)
+            for k in C.COMMON_CONNECTION_VARS:
+                result["_ansible_delegated_vars"][k] = templar.template(delegated_vars.get(k))
 
         # and return
         display.debug("attempt loop complete, returning result")
@@ -791,18 +792,23 @@ class TaskExecutor:
         '''
 
         if self._task.delegate_to is not None:
-            # since we're delegating, we don't want to use interpreter values
-            # which would have been set for the original target host
+            # since we're delegating, we don't want to use interpreter values which would have been set for the original target host
             for i in list(variables.keys()):
                 if isinstance(i, string_types) and i.startswith('ansible_') and i.endswith('_interpreter'):
                     del variables[i]
-            # now replace the interpreter values with those that may have come
-            # from the delegated-to host
-            delegated_vars = variables.get('ansible_delegated_vars', dict()).get(self._task.delegate_to, dict())
-            if isinstance(delegated_vars, dict):
-                for i in delegated_vars:
-                    if isinstance(i, string_types) and i.startswith("ansible_") and i.endswith("_interpreter"):
-                        variables[i] = delegated_vars[i]
+
+            orig_vars = templar.get_available_variables()
+            try:
+                # now replace the interpreter values with those that may have come
+                # from the delegated-to host
+                delegated_vars = variables.get('ansible_delegated_vars', dict()).get(self._task.delegate_to, dict())
+                templar.set_available_variables(delegated_vars)
+                if isinstance(delegated_vars, dict):
+                    for i in delegated_vars:
+                        if isinstance(i, string_types) and i.startswith("ansible_") and i.endswith("_interpreter"):
+                            variables[i] = templar.template(delegated_vars[i])
+            finally:
+                templar.set_available_variables(orig_vars)
 
         conn_type = self._play_context.connection
 
