@@ -321,40 +321,48 @@ class PlayContext(Base):
             delegated_host_name = templar.template(task.delegate_to)
             delegated_vars = variables.get('ansible_delegated_vars', dict()).get(delegated_host_name, dict())
 
-            delegated_transport = C.DEFAULT_TRANSPORT
-            for transport_var in C.MAGIC_VARIABLE_MAPPING.get('connection'):
-                if transport_var in delegated_vars:
-                    delegated_transport = delegated_vars[transport_var]
-                    break
+            orig_vars = templar.get_available_variables()
+            orig_vars = templar.set_available_variables(delegated_vars)
+            try:
+                delegated_transport = C.DEFAULT_TRANSPORT
+                for transport_var in C.MAGIC_VARIABLE_MAPPING.get('connection'):
+                    if transport_var in delegated_vars:
+                        delegated_transport = templar.template(delegated_vars[transport_var])
+                        break
 
-            # make sure this delegated_to host has something set for its remote
-            # address, otherwise we default to connecting to it by name. This
-            # may happen when users put an IP entry into their inventory, or if
-            # they rely on DNS for a non-inventory hostname
-            for address_var in ('ansible_%s_host' % delegated_transport,) + C.MAGIC_VARIABLE_MAPPING.get('remote_addr'):
-                if address_var in delegated_vars:
-                    break
-            else:
-                display.debug("no remote address found for delegated host %s\nusing its name, so success depends on DNS resolution" % delegated_host_name)
-                delegated_vars['ansible_host'] = delegated_host_name
-
-            # reset the port back to the default if none was specified, to prevent
-            # the delegated host from inheriting the original host's setting
-            for port_var in ('ansible_%s_port' % delegated_transport,) + C.MAGIC_VARIABLE_MAPPING.get('port'):
-                if port_var in delegated_vars:
-                    break
-            else:
-                if delegated_transport == 'winrm':
-                    delegated_vars['ansible_port'] = 5986
+                # make sure this delegated_to host has something set for its remote
+                # address, otherwise we default to connecting to it by name. This
+                # may happen when users put an IP entry into their inventory, or if
+                # they rely on DNS for a non-inventory hostname
+                for address_var in ('ansible_%s_host' % delegated_transport,) + C.MAGIC_VARIABLE_MAPPING.get('remote_addr'):
+                    if address_var in delegated_vars:
+                        delegated_vars[address_var] = templar.template(delegated_vars[address_var])
+                        break
                 else:
-                    delegated_vars['ansible_port'] = C.DEFAULT_REMOTE_PORT
+                    display.debug("no remote address found for delegated host %s\nusing its name, so success depends on DNS resolution" % delegated_host_name)
+                    delegated_vars['ansible_host'] = delegated_host_name
 
-            # and likewise for the remote user
-            for user_var in ('ansible_%s_user' % delegated_transport,) + C.MAGIC_VARIABLE_MAPPING.get('remote_user'):
-                if user_var in delegated_vars and delegated_vars[user_var]:
-                    break
-            else:
-                delegated_vars['ansible_user'] = task.remote_user or self.remote_user
+                # reset the port back to the default if none was specified, to prevent
+                # the delegated host from inheriting the original host's setting
+                for port_var in ('ansible_%s_port' % delegated_transport,) + C.MAGIC_VARIABLE_MAPPING.get('port'):
+                    if port_var in delegated_vars:
+                        delegated_vars[port_var] = templar.template(delegated_vars[port_var])
+                        break
+                else:
+                    if delegated_transport == 'winrm':
+                        delegated_vars['ansible_port'] = 5986
+                    else:
+                        delegated_vars['ansible_port'] = C.DEFAULT_REMOTE_PORT
+
+                # and likewise for the remote user
+                for user_var in ('ansible_%s_user' % delegated_transport,) + C.MAGIC_VARIABLE_MAPPING.get('remote_user'):
+                    if user_var in delegated_vars and delegated_vars[user_var]:
+                        delegated_vars[user_var] = templar.template(delegated_vars[user_var])
+                        break
+                else:
+                    delegated_vars['ansible_user'] = task.remote_user or self.remote_user
+            finally:
+                templar.set_available_variables(orig_vars)
         else:
             delegated_vars = dict()
 
