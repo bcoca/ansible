@@ -47,7 +47,7 @@ ansible-playbook test_listening_handlers.yml -i inventory.handlers -v "$@"
 
 # ensures handlers fire equally for both hosts on free strategy
 [ "$(ansible-playbook free_strategy.yml -i ../../inventory -v "$@" | grep testhost| grep -v testhost2 |wc -l)" = "9" ]
-[ "$(ansible-playbook free_strategy.yml -i ../../inventory -v "$@" | grep testhost2|wc -l)" = "9" ]
+[ "$(ansible-playbook free_strategy.yml -i ../../inventory -v "$@" | grep -c testhost2)" = "9" ]
 
 # Notify handler listen
 ansible-playbook test_handlers_listen.yml -i inventory.handlers -v "$@"
