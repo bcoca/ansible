@@ -25,9 +25,9 @@ __metaclass__ = type
 import getpass
 import json
 
-from ansible.errors import AnsibleError, AnsibleOptionsError
+from ansible.errors import AnsibleError
+from ansible.module_utils._text import to_native
 from ansible.module_utils.six.moves import input
-from ansible.module_utils.six.moves.urllib.parse import quote as urlquote, urlparse
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.urls import open_url
 from ansible.utils.color import stringc
@@ -63,12 +63,12 @@ class GalaxyLogin(object):
 
         try:
             self.github_username = input("Github Username: ")
-        except:
+        except Exception:
             pass
 
         try:
             self.github_password = getpass.getpass("Password for %s: " % self.github_username)
-        except:
+        except Exception:
             pass
 
         if not self.github_username or not self.github_password:
@@ -83,8 +83,12 @@ class GalaxyLogin(object):
             tokens = json.load(open_url(self.GITHUB_AUTH, url_username=self.github_username,
                                url_password=self.github_password, force_basic_auth=True,))
         except HTTPError as e:
-            res = json.load(e)
-            raise AnsibleError(res['message'])
+            try:
+                res = json.load(e)
+                raise AnsibleError(res['message'])
+            except Exception:
+                # response was not JSON
+                raise AnsibleError(to_native(e))
 
         for token in tokens:
             if token['note'] == 'ansible-galaxy login':
