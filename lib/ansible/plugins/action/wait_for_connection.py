@@ -22,6 +22,8 @@ __metaclass__ = type
 import time
 from datetime import datetime, timedelta
 
+from ansible.errors import AnsibleActionSkip
+from ansible.module_utils._text import to_text
 from ansible.plugins.action import ActionBase
 
 try:
@@ -62,6 +64,26 @@ class ActionModule(ActionBase):
 
         raise TimedOutException("timed out waiting for %s: %s" % (what_desc, error))
 
+    def _ping_module_test(self, connect_timeout):
+        ''' Test ping module, if available '''
+        display.vvv("wait_for_connection: attempting ping module test")
+        # call connection reset between runs if it's there
+        try:
+            self._connection.reset()
+        except AttributeError:
+            pass
+
+        # Use win_ping on winrm/powershell, else use ping
+        if hasattr(self._connection, '_shell_type') and self._connection._shell_type == 'powershell':
+            module = 'win_ping'
+        else:
+            module = 'ping'
+        ping_result = self._execute_module(module_name=module, module_args=dict(), task_vars=task_vars)
+
+        # Test module output
+        if ping_result.get('failed', False):
+            raise Exception('ping test failed')
+
     def run(self, tmp=None, task_vars=None):
         if task_vars is None:
             task_vars = dict()
@@ -72,30 +94,10 @@ class ActionModule(ActionBase):
         timeout = int(self._task.args.get('timeout', self.DEFAULT_TIMEOUT))
 
         if self._play_context.check_mode:
-            display.vvv("wait_for_connection: skipping for check_mode")
-            return dict(skipped=True)
+            raise AnsibleActionSkip('This action does not support check_mode')
 
         result = super(ActionModule, self).run(tmp, task_vars)
         del tmp  # tmp no longer has any effect
-
-        def ping_module_test(connect_timeout):
-            ''' Test ping module, if available '''
-            display.vvv("wait_for_connection: attempting ping module test")
-            # call connection reset between runs if it's there
-            try:
-                self._connection.reset()
-            except AttributeError:
-                pass
-
-            # Use win_ping on winrm/powershell, else use ping
-            if hasattr(self._connection, '_shell_type') and self._connection._shell_type == 'powershell':
-                ping_result = self._execute_module(module_name='win_ping', module_args=dict(), task_vars=task_vars)
-            else:
-                ping_result = self._execute_module(module_name='ping', module_args=dict(), task_vars=task_vars)
-
-            # Test module output
-            if ping_result['ping'] != 'pong':
-                raise Exception('ping test failed')
 
         start = datetime.now()
 
@@ -103,18 +105,17 @@ class ActionModule(ActionBase):
             time.sleep(delay)
 
         try:
-            # If the connection has a transport_test method, use it first
+            # If the connection has a transport_test method, use it first to determine reachability
             if hasattr(self._connection, 'transport_test'):
                 self.do_until_success_or_timeout(self._connection.transport_test, timeout, connect_timeout, what_desc="connection port up", sleep=sleep)
-
             # Use the ping module test to determine end-to-end connectivity
-            self.do_until_success_or_timeout(ping_module_test, timeout, connect_timeout, what_desc="ping module test success", sleep=sleep)
+            self.do_until_success_or_timeout(self._ping_module_test, timeout, connect_timeout, what_desc="ping module test success", sleep=sleep)
 
         except TimedOutException as e:
             result['failed'] = True
-            result['msg'] = str(e)
+            result['msg'] = to_text(e)
 
         elapsed = datetime.now() - start
         result['elapsed'] = elapsed.seconds
 
-        return result
+        eeturn result
