@@ -10,8 +10,11 @@ import subprocess
 import sys
 import yaml
 
+import ansible.plugins.loader as plugin_loader
+
 from ansible.cli import CLI
-from ansible.config.manager import ConfigManager, Setting, find_ini_config_file
+from ansible import constants as C
+from ansible.config.manager import ConfigManager, Setting
 from ansible.errors import AnsibleError, AnsibleOptionsError
 from ansible.module_utils._text import to_native, to_text
 from ansible.parsing.yaml.dumper import AnsibleDumper
@@ -36,12 +39,17 @@ class ConfigCLI(CLI):
     def parse(self):
 
         self.parser = CLI.base_parser(
-            usage="usage: %%prog [%s] [--help] [options] [ansible.cfg]" % "|".join(self.VALID_ACTIONS),
+            usage="usage: %%prog [%s] [--help] [options] [-t plugin_type plugin_name] [ansible.cfg]" % "|".join(self.VALID_ACTIONS),
             epilog="\nSee '%s <command> --help' for more information on a specific command.\n\n" % os.path.basename(sys.argv[0]),
             desc="View, edit, and manage ansible configuration.",
         )
         self.parser.add_option('-c', '--config', dest='config_file', help="path to configuration file, defaults to first file found in precedence.")
 
+        self.parser.add_option("-t", "--type", action="store", default=None, dest='type', type='choice',
+                               help='Indicate which plugin type when you are querying the configuration for a specific plugin'
+                                    'Available plugin types are : {0}\n'
+                                    'This also requires a plugin name as an argument'.format(C.CONFIGURABLE_PLUGINS),
+                               choices=C.CONFIGURABLE_PLUGINS)
         self.set_action()
 
         # options specific to self.actions
@@ -67,8 +75,7 @@ class ConfigCLI(CLI):
             self.config_file = unfrackpath(self.options.config_file, follow=False)
             self.config = ConfigManager(self.config_file)
         else:
-            self.config = ConfigManager()
-            self.config_file = find_ini_config_file()
+            self.config = C.config
 
         if self.config_file:
             try:
@@ -78,7 +85,7 @@ class ConfigCLI(CLI):
                     raise AnsibleOptionsError("%s is not a valid file" % (self.config_file))
 
                 os.environ['ANSIBLE_CONFIG'] = to_native(self.config_file)
-            except:
+            except Exception:
                 if self.action in ['view']:
                     raise
                 elif self.action in ['edit', 'update']:
@@ -141,7 +148,23 @@ class ConfigCLI(CLI):
         '''
         list all current configs reading lib/constants.py and shows env and config file setting names
         '''
-        self.pager(to_text(yaml.dump(self.config.get_configuration_definitions(), Dumper=AnsibleDumper), errors='surrogate_or_strict'))
+        config_entries = {}
+        if self.options.type is not None:
+            loader = getattr(plugin_loader, '%s_loader' % self.options.type)
+            for plugin in loader.all(class_only=True):
+                finalname = name = plugin._load_name
+                if name.startswith('_'):
+                    # alias or deprecated
+                    if os.path.islink(plugin._original_path):
+                        continue
+                    else:
+                        finalname = name.replace('_', '', 1) + ' (DEPRECATED)'
+                config_entries[finalname] = self.config.get_configuration_definitions(self.options.type, name)
+        else:
+            # this dumps main/common configs
+            config_entries = self.config.get_configuration_definitions()
+
+        self.pager(to_text(yaml.dump(config_entries, Dumper=AnsibleDumper), errors='surrogate_or_strict'))
 
     def execute_dump(self):
         '''
