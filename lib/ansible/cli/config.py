@@ -76,6 +76,7 @@ class ConfigCLI(CLI):
             self.config = ConfigManager(self.config_file)
         else:
             self.config = C.config
+            self.config_file = self.config._config_file
 
         if self.config_file:
             try:
