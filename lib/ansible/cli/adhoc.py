@@ -25,6 +25,7 @@ from ansible.executor.task_queue_manager import TaskQueueManager
 from ansible.module_utils._text import to_text
 from ansible.parsing.splitter import parse_kv
 from ansible.playbook import Playbook
+from ansible.plugins.loader import load_become_methods
 from ansible.playbook.play import Play
 from ansible.utils.display import Display
 
@@ -157,6 +158,8 @@ class AdHocCLI(CLI):
 
         # now create a task queue manager to execute the play
         self._tqm = None
+        # ensure list of methods is available to connection plugins
+        load_become_methods()
         try:
             self._tqm = TaskQueueManager(
                 inventory=inventory,

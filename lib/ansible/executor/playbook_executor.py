@@ -24,7 +24,7 @@ import os
 from ansible import constants as C
 from ansible.executor.task_queue_manager import TaskQueueManager
 from ansible.module_utils._text import to_native, to_text
-from ansible.plugins.loader import become_loader, connection_loader, shell_loader
+from ansible.plugins.loader import connection_loader, shell_loader, load_become_methods
 from ansible.playbook import Playbook
 from ansible.template import Templar
 from ansible.utils.helpers import pct_to_int
@@ -76,7 +76,7 @@ class PlaybookExecutor:
         entry = {}
         try:
             # preload plugins into constant as some connections will depend on it
-            C.BECOME_PLUGINS = frozenset([getattr(x, '_load_name') for x in become_loader.all(class_only=True)])
+            load_become_methods()
             # preload become/connecition/shell to set config defs cached
             list(connection_loader.all(class_only=True))
             list(shell_loader.all(class_only=True))

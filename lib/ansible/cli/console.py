@@ -43,7 +43,7 @@ from ansible.module_utils._text import to_native, to_text
 from ansible.module_utils.parsing.convert_bool import boolean
 from ansible.parsing.splitter import parse_kv
 from ansible.playbook.play import Play
-from ansible.plugins.loader import module_loader, fragment_loader
+from ansible.plugins.loader import module_loader, fragment_loader, load_become_methods
 from ansible.utils import plugin_docs
 from ansible.utils.color import stringc
 from ansible.utils.display import Display
@@ -200,6 +200,8 @@ class ConsoleCLI(CLI, cmd.Cmd):
             cb = 'minimal'  # FIXME: make callbacks configurable
             # now create a task queue manager to execute the play
             self._tqm = None
+            # ensure become method list is available to connections
+            load_become_methods()
             try:
                 self._tqm = TaskQueueManager(
                     inventory=self.inventory,

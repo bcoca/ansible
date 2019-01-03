@@ -29,6 +29,10 @@ from ansible.utils.plugin_docs import get_docstring
 display = Display()
 
 
+def load_become_methods():
+    C.BECOME_PLUGINS = frozenset([getattr(x, '_load_name') for x in become_loader.all(class_only=True)])
+
+
 def get_all_plugin_loaders():
     return [(name, obj) for (name, obj) in globals().items() if isinstance(obj, PluginLoader)]
 
