@@ -207,15 +207,16 @@ class PluginLoader:
 
         # look in any configured plugin paths, allow one level deep for subcategories
         if self.config is not None:
-            for path in self.config:
-                path = os.path.realpath(os.path.expanduser(path))
-                if subdirs:
-                    contents = glob.glob("%s/*" % path) + glob.glob("%s/*/*" % path)
-                    for c in contents:
-                        if os.path.isdir(c) and c not in ret:
-                            ret.append(c)
-                if path not in ret:
-                    ret.append(path)
+            for paths in self.config:
+                for path in glob.glob(paths):
+                    path = os.path.realpath(os.path.expanduser(path))
+                    if subdirs:
+                        contents = glob.glob("%s/*" % path) + glob.glob("%s/*/*" % path)
+                        for c in contents:
+                            if os.path.isdir(c) and c not in ret:
+                                ret.append(c)
+                    if path not in ret:
+                        ret.append(path)
 
         # look for any plugins installed in the package subtree
         # Note package path always gets added last so that every other type of
@@ -314,7 +315,7 @@ class PluginLoader:
         #       (add_directory()) once we start using the iterator.  Currently, it
         #       looks like _get_paths() never forces a cache refresh so if we expect
         #       additional directories to be added later, it is buggy.
-        for path in (p for p in self._get_paths() if p not in self._searched_paths and os.path.isdir(p)):
+        for path in (p for p in self._get_paths() if p not in self._searched_paths):
             try:
                 full_paths = (os.path.join(path, f) for f in os.listdir(path))
             except OSError as e:
