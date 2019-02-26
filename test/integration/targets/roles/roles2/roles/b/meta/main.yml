@@ -1,0 +1,4 @@
+dependencies:
+    - role: dep
+      vars:
+        foo: cat

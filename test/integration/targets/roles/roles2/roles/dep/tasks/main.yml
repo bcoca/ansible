@@ -1,0 +1,3 @@
+- debug: var=foo
+- include_role:
+    name: included

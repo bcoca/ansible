@@ -1,0 +1,45 @@
+- hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: run perl with k=v pair args
+      perl_ping_kv:
+        this: is
+        stuff: that
+        will: be
+        returned: back
+      register: perlkv
+
+    - name: make sure we got back what we expected from perlkv
+      assert:
+        that:
+            - perlkv['this'] == 'is'
+            - perlkv['stuff'] == 'that'
+            - perlkv['will'] == 'be'
+            - perlkv['returned'] == 'back'
+
+    - name: run perl with json args
+      perl_ping_json:
+        this: is
+        the: same
+        as: above
+      register: perljson
+
+    - name: make sure we got back what we expected from perljson
+      assert:
+        that:
+            - perljson['this'] == 'is'
+            - perljson['the'] == 'same'
+            - perljson['as'] == 'above'
+
+
+    - name: run shell with k=v pair args
+      shell_ping_kv:
+        more: stuff
+        that: returns
+      register: shellkv
+
+    - name: make sure we got back what we expected from shellkv
+      assert:
+        that:
+            - shellkv['more'] == 'stuff'
+            - shellkv['that'] == 'returns'

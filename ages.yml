@@ -1,0 +1,26 @@
+- hosts: localhost
+  gather_facts: false
+  vars:
+    users:
+      - name: Mark
+        first_name: Mark
+        age: 22
+        city: Berlin
+        gender: m
+      - name: John
+        first_name: John
+        age: 24
+        city: London
+        gender: m
+      - name: Matthias
+        first_name: Matthias
+        age: 25
+        city: Berlin
+        gender: m
+      - name: Marie
+        first_name: Marie
+        age: 21
+        city: Berlin
+        gender: f
+  tasks:
+    - debug: msg={{users|map(attribute='age')|list}}

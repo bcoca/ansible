@@ -1,0 +1,14 @@
+    - hosts: localhost
+      gather_facts: false
+      vars:
+        unsafe_show_logs: false
+      tasks:
+        - debug:
+            msg: hello
+          no_log: true
+          ignore_errors: true
+
+        - debug:
+            msg: goodbye
+          no_log: false
+          ignore_errors: true
