@@ -157,7 +157,10 @@ class Connection(NetworkConnectionBase):
         if not self.connected:
             self.paramiko_conn = connection_loader.get('paramiko', self._play_context, '/dev/null')
             self.paramiko_conn._set_log_channel(self._get_log_channel())
-            self.paramiko_conn.set_options(direct={'look_for_keys': not bool(self._play_context.password and not self._play_context.private_key_file)})
+
+            # set options from my own options
+            self.paramiko_conn.set_options(direct=self._options)
+            self.paramiko_conn.set_option('look_for_keys', not bool(self.get_option('password') and not self.get_option('private_key_file'))
             self.paramiko_conn.force_persistence = self.force_persistence
             ssh = self.paramiko_conn._connect()
 
