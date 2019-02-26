@@ -17,7 +17,7 @@ DOCUMENTATION = """
           Users with ControlPersist capability can consider using -c ssh or configuring the transport in the configuration file.
         - This plugin also borrows a lot of settings from the ssh plugin as they both cover the same protocol.
     version_added: "0.1"
-    fragments:
+    extends_documentation_fragment:
         - connection_paramiko
 """
 

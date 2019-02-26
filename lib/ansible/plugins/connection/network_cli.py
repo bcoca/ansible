@@ -15,7 +15,7 @@ description:
     SSH and implements a CLI shell.  This connection plugin is typically used by
     network devices for sending and receiving CLi commands to network devices.
 version_added: "2.3"
-fragments:
+extends_documentation_fragment:
     - connection_persistent
     - connection_paramiko
 options:
@@ -160,11 +160,10 @@ class Connection(NetworkConnectionBase):
 
             # set options from my own options
             self.paramiko_conn.set_options(direct=self._options)
-            self.paramiko_conn.set_option('look_for_keys', not bool(self.get_option('password') and not self.get_option('private_key_file'))
+            self.paramiko_conn.set_option('look_for_keys', not bool(self.get_option('password') and not self.get_option('private_key_file')))
             self.paramiko_conn.force_persistence = self.force_persistence
             ssh = self.paramiko_conn._connect()
 
-            host = self.get_option('remote_addr')
             self.queue_message('vvvv', 'ssh connection done, setting terminal')
 
             self._ssh_shell = ssh.ssh.invoke_shell()
