@@ -26,6 +26,36 @@ options:
         with the remote device.
     vars:
       - name: ansible_network_os
+  persistent_connect_timeout:
+    type: int
+    description:
+      - Configures, in seconds, the amount of time to wait when trying to
+        initially establish a persistent connection.  If this value expires
+        before the connection to the remote device is completed, the connection
+        will fail.
+    default: 30
+    ini:
+      - section: persistent_connection
+        key: connect_timeout
+    env:
+      - name: ANSIBLE_PERSISTENT_CONNECT_TIMEOUT
+    vars:
+      - name: ansible_connect_timeout
+  persistent_command_timeout:
+    type: int
+    description:
+      - Configures, in seconds, the amount of time to wait for a command to
+        return from the remote device.  If this timer is exceeded before the
+        command returns, the connection plugin will raise an exception and
+        close.
+    default: 30
+    ini:
+      - section: persistent_connection
+        key: command_timeout
+    env:
+      - name: ANSIBLE_PERSISTENT_COMMAND_TIMEOUT
+    vars:
+      - name: ansible_command_timeout
 """
 
 import getpass
