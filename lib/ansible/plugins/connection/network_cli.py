@@ -41,21 +41,21 @@ options:
       - name: ANSIBLE_PERSISTENT_CONNECT_TIMEOUT
     vars:
       - name: ansible_connect_timeout
-  persistent_command_timeout:
-    type: int
+  persistent_buffer_read_timeout:
+    type: float
     description:
-      - Configures, in seconds, the amount of time to wait for a command to
-        return from the remote device.  If this timer is exceeded before the
-        command returns, the connection plugin will raise an exception and
-        close.
-    default: 30
+      - Configures, in seconds, the amount of time to wait for the data to be read
+        from Paramiko channel after the command prompt is matched. This timeout
+        value ensures that command prompt matched is correct and there is no more data
+        left to be received from remote host.
+    default: 0.1
     ini:
       - section: persistent_connection
-        key: command_timeout
+        key: buffer_read_timeout
     env:
-      - name: ANSIBLE_PERSISTENT_COMMAND_TIMEOUT
+      - name: ANSIBLE_PERSISTENT_BUFFER_READ_TIMEOUT
     vars:
-      - name: ansible_command_timeout
+      - name: ansible_buffer_read_timeout
 """
 
 import getpass

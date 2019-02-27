@@ -141,4 +141,15 @@ options:
             - key: remote_port
               section: paramiko_connection
               version_added: '2.8'
+    private_key_file:
+        description:
+            - Path to private key file to use for authentication
+        ini:
+            - section: defaults
+              key: private_key_file
+        env:
+            - name: ANSIBLE_PRIVATE_KEY_FILE
+        vars:
+            - name: ansible_private_key_file
+            - name: ansible_ssh_private_key_file
 '''

@@ -7,21 +7,21 @@ class ModuleDocFragment(object):
     # Standard files documentation fragment
     DOCUMENTATION = r'''
 options:
-  persistent_buffer_read_timeout:
-    type: float
+  persistent_command_timeout:
+    type: int
     description:
-      - Configures, in seconds, the amount of time to wait for the data to be read
-        from Paramiko channel after the command prompt is matched. This timeout
-        value ensures that command prompt matched is correct and there is no more data
-        left to be received from remote host.
-    default: 0.1
+      - Configures, in seconds, the amount of time to wait for a command to
+        return from the remote device.  If this timer is exceeded before the
+        command returns, the connection plugin will raise an exception and
+        close.
+    default: 30
     ini:
       - section: persistent_connection
-        key: buffer_read_timeout
+        key: command_timeout
     env:
-      - name: ANSIBLE_PERSISTENT_BUFFER_READ_TIMEOUT
+      - name: ANSIBLE_PERSISTENT_COMMAND_TIMEOUT
     vars:
-      - name: ansible_buffer_read_timeout
+      - name: ansible_command_timeout
   persistent_log_messages:
     type: boolean
     description:
