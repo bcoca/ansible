@@ -234,7 +234,7 @@ class Connection(ConnectionBase):
 
             # paramiko 2.2 introduced auth_timeout parameter
             if LooseVersion(paramiko.__version__) >= LooseVersion('2.2.0'):
-                ssh_connect_kwargs['auth_timeout'] = self.get_optoin('timeout')
+                ssh_connect_kwargs['auth_timeout'] = self.get_option('timeout')
 
             ssh.connect(
                 self._play_context.remote_addr.lower(),
