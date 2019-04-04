@@ -10,7 +10,7 @@ options:
     remote_addr:
         description:
             - Address of the remote target
-        default: inventory_hostname
+        default: '{{inventory_hostname}}'
         vars:
             - name: ansible_host
             - name: ansible_ssh_host
