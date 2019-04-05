@@ -62,6 +62,15 @@ _EXEC_PERM_BITS = 0o0111     # execute permission bits
 _DEFAULT_PERM = 0o0666       # default file permission bits
 
 
+def optimistic_removal(paths):
+    ''' take a list of files to attempt to remove, ignore errors '''
+    for tmp_path in paths:
+        b_tmp_path = to_bytes(tmp_path)
+        try:
+            os.remove(b_tmp_path)
+        except (IOError, OSError):
+            pass
+
 def is_executable(path):
     # This function's signature needs to be repeated
     # as the first line of its docstring.
