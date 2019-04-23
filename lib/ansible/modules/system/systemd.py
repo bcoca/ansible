@@ -365,6 +365,10 @@ def main():
         systemctl += " --force"
 
     unit = module.params['name']
+    for globpattern in (r"*", r"?", r"[]"):
+        if globpattern in unit:
+            self.fail_json(msg="This module does not currently support using glob patterns, found '%s' in service name: %s" % (globpattern, unit))
+
     rc = 0
     out = err = ''
     result = dict(

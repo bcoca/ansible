@@ -1,0 +1,2 @@
+bugfixees:
+    - warn user when trying to use globbed names in systemd module.
