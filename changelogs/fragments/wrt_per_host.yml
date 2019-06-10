@@ -1,0 +1,2 @@
+minor_changes:
+    - new shell option to allow for world readable tempfiles per host.
