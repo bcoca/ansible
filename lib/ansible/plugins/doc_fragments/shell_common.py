@@ -59,7 +59,7 @@ options:
     vars:
       - name: ansible_admin_users
   world_readable_temp:
-  name: Allow world readable temporary files
+    name: Allow world readable temporary files
     description:
         - This makes the temporary files created on the machine to be world readable and will issue a warning instead of failing the task.
         - It is useful when becoming an unprivileged user.
