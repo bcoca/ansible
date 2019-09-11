@@ -403,6 +403,15 @@ class TaskExecutor:
                 block=False,
             )
             results.append(res)
+
+            # break loop if until conditions are met
+            if self._task.loop_control and self._task.loop_control.until is not None:
+                cond = Conditional(loader=self._loader)
+                cond.when = self._task.loop_control.get_validated_value('until', self._task.loop_control._until, self._task.loop_control.until, templar)
+                if cond.evaluate_conditional(templar, task_vars):
+                    break
+
+            # done with loop var, remove for next iteration
             del task_vars[loop_var]
 
             # clear 'connection related' plugin variables for next iteration

@@ -416,6 +416,24 @@ For role authors, writing roles that allow loops, instead of dictating the requi
 
 .. _migrating_to_loop:
 
+
+Breaking out of a loop:
+-----------------------
+.. versionadded:: 2.10
+
+To end a loop before we consume all the items provided, you can use ``until``::
+
+    - debug: var=item
+      loop:
+        - 1
+        - 2
+        - 3
+        - 4
+      loop_control:
+        until: item > 2
+
+This allows you to avoid doing complex ``when`` conditions to skip loop iterations after you get what you needed from the task.
+
 Migrating from with_X to loop
 =============================
 

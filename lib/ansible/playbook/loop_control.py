@@ -25,11 +25,12 @@ from ansible.playbook.base import FieldAttributeBase
 
 class LoopControl(FieldAttributeBase):
 
-    _loop_var = FieldAttribute(isa='str', default='item')
+    _extended = FieldAttribute(isa='bool')
     _index_var = FieldAttribute(isa='str')
     _label = FieldAttribute(isa='str')
+    _loop_var = FieldAttribute(isa='str', default='item')
     _pause = FieldAttribute(isa='float', default=0)
-    _extended = FieldAttribute(isa='bool')
+    _until = FieldAttribute(isa='list', default=list)
 
     def __init__(self):
         super(LoopControl, self).__init__()
@@ -38,3 +39,10 @@ class LoopControl(FieldAttributeBase):
     def load(data, variable_manager=None, loader=None):
         t = LoopControl()
         return t.load_data(data, variable_manager=variable_manager, loader=loader)
+
+    def _post_validate_until(self, attr, value, templar):
+        '''
+        until is evaluated after the execution of the loop is complete,
+        and should not be templated during the regular post_validate step.
+        '''
+        return value
