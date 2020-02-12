@@ -21,13 +21,18 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
+import sys
+
 from abc import ABCMeta
 
 from ansible import constants as C
 from ansible.errors import AnsibleError
 from ansible.module_utils._text import to_native
+from ansible.module_utils.common._collections_compat import MutableMapping
 from ansible.module_utils.six import with_metaclass, string_types
+from ansible.parsing.yaml.loader import AnsibleLoader
 from ansible.utils.display import Display
+from ansible.utils.plugin_docs import add_fragments
 
 display = Display()
 
@@ -49,8 +54,46 @@ class AnsiblePlugin(with_metaclass(ABCMeta, object)):
     # allow extra passthrough parameters
     allow_extras = False
 
+    # cache docs per class
+    _docs = {}
+    _return = {}
+    _meta = {}
+
     def __init__(self):
         self._options = {}
+
+    @classmethod
+    def _full_doc(cls, fragment_loader, varname, cachevar, path):
+
+        if not cachevar:
+
+            gvar = getattr(sys.modules[__name__], varname)
+            if isinstance(gvar, string_types):
+                cachevar = AnsibleLoader(gvar, file_name=path).get_single_data()
+            elif isinstance(gvar, MutableMapping):
+                cachevar = gvar
+
+            if cachevar and isinstance(cachevar, MutableMapping):
+                add_fragments(cachevar, path, fragment_loader=fragment_loader, doc_var=varname)
+
+        return cachevar
+
+
+    def docs(self, fragment_loader):
+        mc = getattr(sys.modules[__name__], get_plugin_class(self))
+        return mc._full_doc(fragment_loader, 'DOCUMENTATION', mc._docs, self._original_path)
+
+    @classmethod
+    def examples(cls):
+        return globals()['EXAMPLES']
+
+    @classmethod
+    def returndocs(cls, fragment_loader):
+        return cls._full_doc(fragment_loader, 'RETURN', cls._return)
+
+    @classmethod
+    def metadata(cls, fragment_loader):
+        return cls._full_doc(fragment_loader, 'METADATA', cls._meta)
 
     def get_option(self, option, hostvars=None):
         if option not in self._options:

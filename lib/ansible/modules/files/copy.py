@@ -197,6 +197,8 @@ EXAMPLES = r'''
 '''
 
 RETURN = r'''
+extends_documentation_fragment:
+    - return_common
 dest:
     description: Destination file/path
     returned: success

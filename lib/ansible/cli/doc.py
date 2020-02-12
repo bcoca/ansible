@@ -295,29 +295,41 @@ class DocCLI(CLI):
     @staticmethod
     def _get_plugin_doc(plugin, loader, search_paths):
         # if the plugin lives in a non-python file (eg, win_X.ps1), require the corresponding python file for docs
-        filename = loader.find_plugin(plugin, mod_type='.py', ignore_deprecated=True, check_aliases=True)
-        if filename is None:
-            raise PluginNotFound('%s was not found in %s' % (plugin, search_paths))
 
-        doc, plainexamples, returndocs, metadata = get_docstring(filename, fragment_loader, verbose=(context.CLIARGS['verbosity'] > 0))
+        try:
+            p = loader.get(plugin, class_only=False)
+            filename = p._original_path
 
-        # If the plugin existed but did not have a DOCUMENTATION element and was not removed, it's
-        # an error
-        if doc is None:
-            # doc may be None when the module has been removed.  Calling code may choose to
-            # handle that but we can't.
-            if 'status' in metadata and isinstance(metadata['status'], Container):
-                if 'removed' in metadata['status']:
-                    raise RemovedPlugin('%s has been removed' % plugin)
+            doc = p.docs(fragment_loader)
+            plainexamples = p.examples()
+            returndocs = p.returndocs(fragment_loader)
+            metadata = getattr(p, 'METADATA', {})
+        except Exception as e:
+            raise e
 
-                # Backwards compat: no documentation but valid metadata (or no metadata, which results in using the default metadata).
-                # Probably should make this an error in 2.10
-                return {}, {}, {}, metadata
-            else:
-                # If metadata is invalid, warn but don't error
-                display.warning(u'%s has an invalid ANSIBLE_METADATA field' % plugin)
+            filename = loader.find_plugin(plugin, mod_type='.py', ignore_deprecated=True, check_aliases=True)
+            if filename is None:
+                raise PluginNotFound('%s was not found in %s' % (plugin, search_paths))
 
-            raise ValueError('%s did not contain a DOCUMENTATION attribute' % plugin)
+            doc, plainexamples, returndocs, metadata = get_docstring(filename, fragment_loader, verbose=(context.CLIARGS['verbosity'] > 0))
+
+            # If the plugin existed but did not have a DOCUMENTATION element and was not removed, it's
+            # an error
+            if doc is None:
+                # doc may be None when the module has been removed.  Calling code may choose to
+                # handle that but we can't.
+                if 'status' in metadata and isinstance(metadata['status'], Container):
+                    if 'removed' in metadata['status']:
+                        raise RemovedPlugin('%s has been removed' % plugin)
+
+                    # Backwards compat: no documentation but valid metadata (or no metadata, which results in using the default metadata).
+                    # Probably should make this an error in 2.10
+                    return {}, {}, {}, metadata
+                else:
+                    # If metadata is invalid, warn but don't error
+                    display.warning(u'%s has an invalid ANSIBLE_METADATA field' % plugin)
+
+                raise ValueError('%s did not contain a DOCUMENTATION attribute' % plugin)
 
         doc['filename'] = filename
         return doc, plainexamples, returndocs, metadata
