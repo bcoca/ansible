@@ -929,15 +929,15 @@ files:
   $modules/net_tools/netbox:
     maintainers: FragmentedPacket
   $modules/net_tools/netbox/netbox_device.py:
-    migrated_to: netbox.netbox
+    migrated_to: netbox_community.ansible_modules
   $modules/net_tools/netbox/netbox_interface.py:
     migrated_to: community.general
   $modules/net_tools/netbox/netbox_ip_address.py:
-    migrated_to: netbox.netbox
+    migrated_to: netbox_community.ansible_modules
   $modules/net_tools/netbox/netbox_prefix.py:
-    migrated_to: netbox.netbox
+    migrated_to: netbox_community.ansible_modules
   $modules/net_tools/netbox/netbox_site.py:
-    migrated_to: netbox.netbox
+    migrated_to: netbox_community.ansible_modules
   $modules/network/a10/: ericchou1 mischapeters
   $modules/network/aci/: &id017
     keywords:
@@ -22665,6 +22665,8 @@ files:
     migrated_to: ansible.windows
   test/integration/targets/win_whoami/tasks/main.yml:
     migrated_to: ansible.windows
+  lib/ansible/module_utils/net_tools/netbox/netbox_utils.py:
+    migrated_to: netbox_community.ansible_modules
 macros:
   module_utils: lib/ansible/module_utils
   modules: lib/ansible/modules
