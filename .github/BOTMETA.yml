@@ -2821,6 +2821,7 @@ files:
     - remote_management
     - ucs
     maintainers: $team_ucs
+    migrated_to: cisco.ucs
   $modules/remote_management/dellemc/: rajeevarakkal
   $modules/source_control/git.py: $team_ansible
   $modules/source_control/github/github_key.py:
@@ -30076,6 +30077,48 @@ files:
     migrated_to: cisco.nxos
   test/integration/targets/nxos_nxapi/tasks/platform/n7k/assert_changes_http.yaml:
     migrated_to: cisco.nxos
+  lib/ansible/modules/remote_management/ucs/ucs_ip_pool.py:
+    migrated_to: cisco.ucs
+  lib/ansible/modules/remote_management/ucs/ucs_mac_pool.py:
+    migrated_to: cisco.ucs
+  lib/ansible/modules/remote_management/ucs/ucs_managed_objects.py:
+    migrated_to: cisco.ucs
+  lib/ansible/modules/remote_management/ucs/ucs_query.py:
+    migrated_to: cisco.ucs
+  lib/ansible/modules/remote_management/ucs/ucs_service_profile_template.py:
+    migrated_to: cisco.ucs
+  lib/ansible/modules/remote_management/ucs/ucs_uuid_pool.py:
+    migrated_to: cisco.ucs
+  lib/ansible/modules/remote_management/ucs/ucs_vlans.py:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_ip_pool/aliases:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_ip_pool/tasks/main.yml:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_mac_pool/aliases:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_mac_pool/tasks/main.yml:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_managed_objects/aliases:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_managed_objects/tasks/main.yml:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_query/aliases:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_query/tasks/main.yml:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_service_profile_template/aliases:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_service_profile_template/tasks/main.yml:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_uuid_pool/aliases:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_uuid_pool/tasks/main.yml:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_vlans/aliases:
+    migrated_to: cisco.ucs
+  test/integration/targets/ucs_vlans/tasks/main.yml:
+    migrated_to: cisco.ucs
 macros:
   module_utils: lib/ansible/module_utils
   modules: lib/ansible/modules
