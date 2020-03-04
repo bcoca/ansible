@@ -6355,13 +6355,6 @@ lib/ansible/modules/network/ordnance/ordnance_facts.py validate-modules:paramete
 lib/ansible/modules/network/ordnance/ordnance_facts.py validate-modules:parameter-type-not-in-doc
 lib/ansible/modules/network/ordnance/ordnance_facts.py validate-modules:undocumented-parameter
 lib/ansible/modules/network/ordnance/ordnance_facts.py yamllint:unparsable-with-libyaml
-lib/ansible/modules/network/ovs/openvswitch_bridge.py validate-modules:doc-choices-do-not-match-spec
-lib/ansible/modules/network/ovs/openvswitch_bridge.py validate-modules:doc-missing-type
-lib/ansible/modules/network/ovs/openvswitch_bridge.py validate-modules:parameter-type-not-in-doc
-lib/ansible/modules/network/ovs/openvswitch_db.py validate-modules:doc-missing-type
-lib/ansible/modules/network/ovs/openvswitch_db.py validate-modules:parameter-type-not-in-doc
-lib/ansible/modules/network/ovs/openvswitch_port.py validate-modules:doc-missing-type
-lib/ansible/modules/network/ovs/openvswitch_port.py validate-modules:parameter-type-not-in-doc
 lib/ansible/modules/network/panos/_panos_admin.py future-import-boilerplate
 lib/ansible/modules/network/panos/_panos_admin.py metaclass-boilerplate
 lib/ansible/modules/network/panos/_panos_admin.py validate-modules:doc-missing-type
@@ -8417,8 +8410,6 @@ test/units/modules/cloud/xenserver/FakeAnsibleModule.py future-import-boilerplat
 test/units/modules/cloud/xenserver/FakeAnsibleModule.py metaclass-boilerplate
 test/units/modules/cloud/xenserver/FakeXenAPI.py future-import-boilerplate
 test/units/modules/cloud/xenserver/FakeXenAPI.py metaclass-boilerplate
-test/units/modules/conftest.py future-import-boilerplate
-test/units/modules/conftest.py metaclass-boilerplate
 test/units/modules/files/test_copy.py future-import-boilerplate
 test/units/modules/messaging/rabbitmq/test_rabbitmq_user.py future-import-boilerplate
 test/units/modules/messaging/rabbitmq/test_rabbitmq_user.py metaclass-boilerplate
