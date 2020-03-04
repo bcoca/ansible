@@ -24447,6 +24447,12 @@ files:
     migrated_to: junipernetworks.junos
   test/units/modules/network/junos/test_junos_command.py:
     migrated_to: junipernetworks.junos
+  lib/ansible/modules/identity/cyberark/__init__.py:
+    migrated_to: cyberark.bizdev
+  lib/ansible/modules/identity/cyberark/cyberark_authentication.py:
+    migrated_to: cyberark.bizdev
+  lib/ansible/modules/identity/cyberark/cyberark_user.py:
+    migrated_to: cyberark.bizdev
 macros:
   module_utils: lib/ansible/module_utils
   modules: lib/ansible/modules
