@@ -4471,29 +4471,29 @@ files:
   lib/ansible/modules/network/ovs/openvswitch_port.py:
     migrated_to: openvswitch.openvswitch
   test/units/modules/utils.py:
-    migrated_to: community.windows
+    migrated_to: openstack.cloud
   test/units/compat/__init__.py:
-    migrated_to: community.windows
+    migrated_to: openstack.cloud
   test/units/compat/builtins.py:
-    migrated_to: community.windows
+    migrated_to: openstack.cloud
   test/units/compat/unittest.py:
-    migrated_to: community.windows
+    migrated_to: openstack.cloud
   test/units/compat/mock.py:
-    migrated_to: community.windows
+    migrated_to: openstack.cloud
   test/units/mock/path.py:
-    migrated_to: community.windows
+    migrated_to: openstack.cloud
   test/units/mock/yaml_helper.py:
-    migrated_to: community.windows
+    migrated_to: openstack.cloud
   test/units/mock/__init__.py:
-    migrated_to: community.windows
+    migrated_to: openstack.cloud
   test/units/mock/vault_helper.py:
-    migrated_to: community.windows
+    migrated_to: openstack.cloud
   test/units/mock/loader.py:
-    migrated_to: community.windows
+    migrated_to: openstack.cloud
   test/units/mock/procenv.py:
-    migrated_to: community.windows
+    migrated_to: openstack.cloud
   test/units/modules/conftest.py:
-    migrated_to: community.vmware
+    migrated_to: openstack.cloud
   test/units/modules/network/ovs/test_openvswitch_db.py:
     migrated_to: openvswitch.openvswitch
   test/units/modules/network/ovs/__init__.py:
@@ -11927,7 +11927,7 @@ files:
   test/units/plugins/inventory/test_linode.py:
     migrated_to: community.general
   test/units/plugins/inventory/__init__.py:
-    migrated_to: community.general
+    migrated_to: openstack.cloud
   test/units/plugins/lookup/test_avi.py:
     migrated_to: community.general
   test/units/plugins/lookup/__init__.py:
@@ -20432,6 +20432,12 @@ files:
     migrated_to: community.windows
   test/integration/targets/win_xml/meta/main.yml:
     migrated_to: community.windows
+  test/units/plugins/inventory/test_openstack.py:
+    migrated_to: openstack.cloud
+  test/units/modules/cloud/openstack/test_os_server.py:
+    migrated_to: openstack.cloud
+  test/units/modules/cloud/openstack/__init__.py:
+    migrated_to: openstack.cloud
 macros:
   module_utils: lib/ansible/module_utils
   modules: lib/ansible/modules
