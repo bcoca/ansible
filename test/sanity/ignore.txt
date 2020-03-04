@@ -89,8 +89,6 @@ lib/ansible/module_utils/powershell/Ansible.ModuleUtils.LinkUtil.psm1 pslint:PSU
 lib/ansible/module_utils/pycompat24.py future-import-boilerplate
 lib/ansible/module_utils/pycompat24.py metaclass-boilerplate
 lib/ansible/module_utils/pycompat24.py no-get-exception
-lib/ansible/module_utils/remote_management/ucs.py future-import-boilerplate
-lib/ansible/module_utils/remote_management/ucs.py metaclass-boilerplate
 lib/ansible/module_utils/service.py future-import-boilerplate
 lib/ansible/module_utils/service.py metaclass-boilerplate
 lib/ansible/module_utils/six/__init__.py empty-init # breaks namespacing, bundled, do not override
@@ -181,16 +179,6 @@ lib/ansible/modules/packaging/os/yum_repository.py validate-modules:doc-missing-
 lib/ansible/modules/packaging/os/yum_repository.py validate-modules:parameter-list-no-elements
 lib/ansible/modules/packaging/os/yum_repository.py validate-modules:parameter-type-not-in-doc
 lib/ansible/modules/packaging/os/yum_repository.py validate-modules:undocumented-parameter
-lib/ansible/modules/remote_management/ucs/ucs_ip_pool.py validate-modules:parameter-type-not-in-doc
-lib/ansible/modules/remote_management/ucs/ucs_mac_pool.py validate-modules:parameter-type-not-in-doc
-lib/ansible/modules/remote_management/ucs/ucs_managed_objects.py validate-modules:doc-elements-mismatch
-lib/ansible/modules/remote_management/ucs/ucs_managed_objects.py validate-modules:parameter-list-no-elements
-lib/ansible/modules/remote_management/ucs/ucs_managed_objects.py validate-modules:parameter-type-not-in-doc
-lib/ansible/modules/remote_management/ucs/ucs_managed_objects.py validate-modules:undocumented-parameter
-lib/ansible/modules/remote_management/ucs/ucs_service_profile_template.py validate-modules:parameter-type-not-in-doc
-lib/ansible/modules/remote_management/ucs/ucs_uuid_pool.py validate-modules:parameter-type-not-in-doc
-lib/ansible/modules/remote_management/ucs/ucs_vlans.py validate-modules:doc-required-mismatch
-lib/ansible/modules/remote_management/ucs/ucs_vlans.py validate-modules:parameter-type-not-in-doc
 lib/ansible/modules/source_control/git.py pylint:blacklisted-name
 lib/ansible/modules/source_control/git.py use-argspec-type-path
 lib/ansible/modules/source_control/git.py validate-modules:doc-missing-type
@@ -254,8 +242,6 @@ lib/ansible/plugins/doc_fragments/shell_common.py future-import-boilerplate
 lib/ansible/plugins/doc_fragments/shell_common.py metaclass-boilerplate
 lib/ansible/plugins/doc_fragments/shell_windows.py future-import-boilerplate
 lib/ansible/plugins/doc_fragments/shell_windows.py metaclass-boilerplate
-lib/ansible/plugins/doc_fragments/ucs.py future-import-boilerplate
-lib/ansible/plugins/doc_fragments/ucs.py metaclass-boilerplate
 lib/ansible/plugins/doc_fragments/url.py future-import-boilerplate
 lib/ansible/plugins/doc_fragments/url.py metaclass-boilerplate
 lib/ansible/plugins/doc_fragments/validate.py future-import-boilerplate
