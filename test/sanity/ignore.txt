@@ -2317,14 +2317,6 @@ lib/ansible/modules/storage/netapp/na_ontap_vscan_scanner_pool.py validate-modul
 lib/ansible/modules/storage/netapp/na_ontap_vserver_peer.py validate-modules:doc-required-mismatch
 lib/ansible/modules/storage/netapp/na_ontap_vserver_peer.py validate-modules:parameter-list-no-elements
 lib/ansible/modules/storage/netapp/na_ontap_vserver_peer.py validate-modules:parameter-type-not-in-doc
-lib/ansible/modules/storage/purestorage/purefb_ds.py validate-modules:doc-required-mismatch
-lib/ansible/modules/storage/purestorage/purefb_ds.py validate-modules:parameter-list-no-elements
-lib/ansible/modules/storage/purestorage/purefb_dsrole.py validate-modules:doc-required-mismatch
-lib/ansible/modules/storage/purestorage/purefb_fs.py validate-modules:doc-default-does-not-match-spec
-lib/ansible/modules/storage/purestorage/purefb_info.py validate-modules:parameter-list-no-elements
-lib/ansible/modules/storage/purestorage/purefb_info.py validate-modules:return-syntax-error
-lib/ansible/modules/storage/purestorage/purefb_s3acc.py validate-modules:doc-required-mismatch
-lib/ansible/modules/storage/purestorage/purefb_s3user.py validate-modules:doc-required-mismatch
 lib/ansible/modules/system/getent.py validate-modules:parameter-type-not-in-doc
 lib/ansible/modules/system/hostname.py validate-modules:invalid-ansiblemodule-schema
 lib/ansible/modules/system/hostname.py validate-modules:parameter-type-not-in-doc
