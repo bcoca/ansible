@@ -62,10 +62,6 @@ lib/ansible/module_utils/api.py metaclass-boilerplate
 lib/ansible/module_utils/basic.py metaclass-boilerplate
 lib/ansible/module_utils/common/network.py future-import-boilerplate
 lib/ansible/module_utils/common/network.py metaclass-boilerplate
-lib/ansible/module_utils/compat/ipaddress.py future-import-boilerplate
-lib/ansible/module_utils/compat/ipaddress.py metaclass-boilerplate
-lib/ansible/module_utils/compat/ipaddress.py no-assert
-lib/ansible/module_utils/compat/ipaddress.py no-unicode-literals
 lib/ansible/module_utils/connection.py future-import-boilerplate
 lib/ansible/module_utils/connection.py metaclass-boilerplate
 lib/ansible/module_utils/distro/__init__.py empty-init # breaks namespacing, bundled, do not override
@@ -94,20 +90,6 @@ lib/ansible/module_utils/netapp_elementsw_module.py metaclass-boilerplate
 lib/ansible/module_utils/netapp_module.py future-import-boilerplate
 lib/ansible/module_utils/netapp_module.py metaclass-boilerplate
 lib/ansible/module_utils/network/checkpoint/checkpoint.py metaclass-boilerplate
-lib/ansible/module_utils/network/common/cfg/base.py future-import-boilerplate
-lib/ansible/module_utils/network/common/cfg/base.py metaclass-boilerplate
-lib/ansible/module_utils/network/common/config.py future-import-boilerplate
-lib/ansible/module_utils/network/common/config.py metaclass-boilerplate
-lib/ansible/module_utils/network/common/facts/facts.py future-import-boilerplate
-lib/ansible/module_utils/network/common/facts/facts.py metaclass-boilerplate
-lib/ansible/module_utils/network/common/netconf.py future-import-boilerplate
-lib/ansible/module_utils/network/common/netconf.py metaclass-boilerplate
-lib/ansible/module_utils/network/common/network.py future-import-boilerplate
-lib/ansible/module_utils/network/common/network.py metaclass-boilerplate
-lib/ansible/module_utils/network/common/parsing.py future-import-boilerplate
-lib/ansible/module_utils/network/common/parsing.py metaclass-boilerplate
-lib/ansible/module_utils/network/common/utils.py future-import-boilerplate
-lib/ansible/module_utils/network/common/utils.py metaclass-boilerplate
 lib/ansible/module_utils/network/eos/eos.py future-import-boilerplate
 lib/ansible/module_utils/network/eos/eos.py metaclass-boilerplate
 lib/ansible/module_utils/network/eos/providers/cli/config/bgp/address_family.py future-import-boilerplate
@@ -156,8 +138,6 @@ lib/ansible/module_utils/network/junos/junos.py future-import-boilerplate
 lib/ansible/module_utils/network/junos/junos.py metaclass-boilerplate
 lib/ansible/module_utils/network/meraki/meraki.py future-import-boilerplate
 lib/ansible/module_utils/network/meraki/meraki.py metaclass-boilerplate
-lib/ansible/module_utils/network/netconf/netconf.py future-import-boilerplate
-lib/ansible/module_utils/network/netconf/netconf.py metaclass-boilerplate
 lib/ansible/module_utils/network/nxos/argspec/facts/facts.py future-import-boilerplate
 lib/ansible/module_utils/network/nxos/argspec/facts/facts.py metaclass-boilerplate
 lib/ansible/module_utils/network/nxos/facts/facts.py future-import-boilerplate
@@ -168,8 +148,6 @@ lib/ansible/module_utils/network/nxos/nxos.py future-import-boilerplate
 lib/ansible/module_utils/network/nxos/nxos.py metaclass-boilerplate
 lib/ansible/module_utils/network/nxos/utils/utils.py future-import-boilerplate
 lib/ansible/module_utils/network/nxos/utils/utils.py metaclass-boilerplate
-lib/ansible/module_utils/network/restconf/restconf.py future-import-boilerplate
-lib/ansible/module_utils/network/restconf/restconf.py metaclass-boilerplate
 lib/ansible/module_utils/network/vyos/vyos.py future-import-boilerplate
 lib/ansible/module_utils/network/vyos/vyos.py metaclass-boilerplate
 lib/ansible/module_utils/ovirt.py future-import-boilerplate
@@ -930,11 +908,6 @@ lib/ansible/modules/network/check_point/cp_mgmt_vpn_community_star.py validate-m
 lib/ansible/modules/network/check_point/cp_mgmt_vpn_community_star_facts.py validate-modules:parameter-list-no-elements
 lib/ansible/modules/network/check_point/cp_mgmt_wildcard.py validate-modules:parameter-list-no-elements
 lib/ansible/modules/network/check_point/cp_mgmt_wildcard_facts.py validate-modules:parameter-list-no-elements
-lib/ansible/modules/network/cli/cli_command.py validate-modules:parameter-list-no-elements
-lib/ansible/modules/network/cli/cli_command.py validate-modules:parameter-type-not-in-doc
-lib/ansible/modules/network/cli/cli_config.py validate-modules:doc-missing-type
-lib/ansible/modules/network/cli/cli_config.py validate-modules:parameter-list-no-elements
-lib/ansible/modules/network/cli/cli_config.py validate-modules:parameter-type-not-in-doc
 lib/ansible/modules/network/eos/_eos_interface.py validate-modules:doc-choices-do-not-match-spec
 lib/ansible/modules/network/eos/_eos_interface.py validate-modules:doc-elements-mismatch
 lib/ansible/modules/network/eos/_eos_interface.py validate-modules:doc-missing-type
@@ -1455,18 +1428,6 @@ lib/ansible/modules/network/meraki/meraki_vlan.py validate-modules:doc-elements-
 lib/ansible/modules/network/meraki/meraki_vlan.py validate-modules:missing-suboption-docs
 lib/ansible/modules/network/meraki/meraki_vlan.py validate-modules:parameter-type-not-in-doc
 lib/ansible/modules/network/meraki/meraki_vlan.py validate-modules:undocumented-parameter
-lib/ansible/modules/network/netconf/netconf_config.py validate-modules:doc-choices-do-not-match-spec
-lib/ansible/modules/network/netconf/netconf_config.py validate-modules:doc-missing-type
-lib/ansible/modules/network/netconf/netconf_config.py validate-modules:doc-required-mismatch
-lib/ansible/modules/network/netconf/netconf_config.py validate-modules:mutually_exclusive-unknown
-lib/ansible/modules/network/netconf/netconf_config.py validate-modules:parameter-type-not-in-doc
-lib/ansible/modules/network/netconf/netconf_config.py validate-modules:required_one_of-unknown
-lib/ansible/modules/network/netconf/netconf_get.py validate-modules:doc-missing-type
-lib/ansible/modules/network/netconf/netconf_get.py validate-modules:return-syntax-error
-lib/ansible/modules/network/netconf/netconf_rpc.py validate-modules:doc-missing-type
-lib/ansible/modules/network/netconf/netconf_rpc.py validate-modules:doc-required-mismatch
-lib/ansible/modules/network/netconf/netconf_rpc.py validate-modules:parameter-type-not-in-doc
-lib/ansible/modules/network/netconf/netconf_rpc.py validate-modules:return-syntax-error
 lib/ansible/modules/network/nxos/_nxos_interface.py validate-modules:doc-choices-do-not-match-spec
 lib/ansible/modules/network/nxos/_nxos_interface.py validate-modules:doc-default-does-not-match-spec
 lib/ansible/modules/network/nxos/_nxos_interface.py validate-modules:doc-default-incompatible-type
@@ -1982,8 +1943,6 @@ lib/ansible/modules/network/nxos/nxos_vxlan_vtep_vni.py validate-modules:paramet
 lib/ansible/modules/network/nxos/storage/nxos_devicealias.py validate-modules:doc-elements-mismatch
 lib/ansible/modules/network/nxos/storage/nxos_vsan.py validate-modules:doc-elements-mismatch
 lib/ansible/modules/network/nxos/storage/nxos_zone_zoneset.py validate-modules:doc-elements-mismatch
-lib/ansible/modules/network/restconf/restconf_config.py validate-modules:doc-missing-type
-lib/ansible/modules/network/restconf/restconf_get.py validate-modules:doc-missing-type
 lib/ansible/modules/network/vyos/_vyos_interface.py future-import-boilerplate
 lib/ansible/modules/network/vyos/_vyos_interface.py metaclass-boilerplate
 lib/ansible/modules/network/vyos/_vyos_interface.py validate-modules:doc-choices-do-not-match-spec
@@ -2528,9 +2487,6 @@ lib/ansible/plugins/action/eos.py action-plugin-docs # base class for deprecated
 lib/ansible/plugins/action/ios.py action-plugin-docs # base class for deprecated network platform modules using `connection: local`
 lib/ansible/plugins/action/iosxr.py action-plugin-docs # base class for deprecated network platform modules using `connection: local`
 lib/ansible/plugins/action/junos.py action-plugin-docs # base class for deprecated network platform modules using `connection: local`
-lib/ansible/plugins/action/net_base.py action-plugin-docs # base class for other net_* action plugins which have a matching module
-lib/ansible/plugins/action/netconf.py action-plugin-docs # base class for deprecated network platform modules using `connection: local`
-lib/ansible/plugins/action/network.py action-plugin-docs # base class for network action plugins
 lib/ansible/plugins/action/normal.py action-plugin-docs # default action plugin for modules without a dedicated action plugin
 lib/ansible/plugins/action/nxos.py action-plugin-docs # base class for deprecated network platform modules using `connection: local`
 lib/ansible/plugins/action/vyos.py action-plugin-docs # base class for deprecated network platform modules using `connection: local`
@@ -2561,10 +2517,6 @@ lib/ansible/plugins/doc_fragments/meraki.py future-import-boilerplate
 lib/ansible/plugins/doc_fragments/meraki.py metaclass-boilerplate
 lib/ansible/plugins/doc_fragments/netapp.py future-import-boilerplate
 lib/ansible/plugins/doc_fragments/netapp.py metaclass-boilerplate
-lib/ansible/plugins/doc_fragments/netconf.py future-import-boilerplate
-lib/ansible/plugins/doc_fragments/netconf.py metaclass-boilerplate
-lib/ansible/plugins/doc_fragments/network_agnostic.py future-import-boilerplate
-lib/ansible/plugins/doc_fragments/network_agnostic.py metaclass-boilerplate
 lib/ansible/plugins/doc_fragments/nxos.py future-import-boilerplate
 lib/ansible/plugins/doc_fragments/nxos.py metaclass-boilerplate
 lib/ansible/plugins/doc_fragments/ovirt.py future-import-boilerplate
