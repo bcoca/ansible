@@ -355,18 +355,22 @@ class Role(Base, Conditional, Taggable, CollectionSearch):
         params = combine_vars(params, self._role_params)
         return params
 
-    def get_vars(self, dep_chain=None, include_params=True):
+    def get_vars(self, dep_chain=None, include_params=True, only_exports=False):
         dep_chain = [] if dep_chain is None else dep_chain
 
-        all_vars = self.get_inherited_vars(dep_chain)
+        all_vars = {}
+        if not only_exports:
+            all_vars = self.get_inherited_vars(dep_chain)
 
         for dep in self.get_all_dependencies():
-            all_vars = combine_vars(all_vars, dep.get_vars(include_params=include_params))
+            all_vars = combine_vars(all_vars, dep.get_vars(include_params=include_params, only_exports=only_exports))
 
-        all_vars = combine_vars(all_vars, self.vars)
         all_vars = combine_vars(all_vars, self._role_vars)
+
         if include_params:
             all_vars = combine_vars(all_vars, self.get_role_params(dep_chain=dep_chain))
+        if not only_exports:
+            all_vars = combine_vars(all_vars, self.vars)
 
         return all_vars
 

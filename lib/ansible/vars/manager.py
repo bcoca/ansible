@@ -386,7 +386,7 @@ class VariableManager:
             # unless the user has disabled this via a config option
             if not C.DEFAULT_PRIVATE_ROLE_VARS:
                 for role in play.get_roles():
-                    all_vars = _combine_and_track(all_vars, role.get_vars(include_params=False), "role '%s' vars" % role.name)
+                    all_vars = _combine_and_track(all_vars, role.get_vars(include_params=False, only_exports=True), "role '%s' vars" % role.name)
 
         # next, we merge in the vars from the role, which will specifically
         # follow the role dependency chain, and then we merge in the tasks
