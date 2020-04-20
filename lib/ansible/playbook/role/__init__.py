@@ -359,8 +359,7 @@ class Role(Base, Conditional, Taggable, CollectionSearch):
         dep_chain = [] if dep_chain is None else dep_chain
 
         all_vars = {}
-        if not only_exports:
-            all_vars = self.get_inherited_vars(dep_chain)
+        all_vars = self.get_inherited_vars(dep_chain)
 
         for dep in self.get_all_dependencies():
             all_vars = combine_vars(all_vars, dep.get_vars(include_params=include_params, only_exports=only_exports))
@@ -369,7 +368,11 @@ class Role(Base, Conditional, Taggable, CollectionSearch):
 
         if include_params:
             all_vars = combine_vars(all_vars, self.get_role_params(dep_chain=dep_chain))
-        if not only_exports:
+
+        if only_exports:
+            # only add from vars: those that are already exported
+            all_vars = combine_vars(all_vars, {k:v for (k,v) in self.vars.items() if k in all_vars})
+        else:
             all_vars = combine_vars(all_vars, self.vars)
 
         return all_vars
