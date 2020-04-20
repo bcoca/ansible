@@ -367,6 +367,7 @@ class Role(Base, Conditional, Taggable, CollectionSearch):
         all_vars = combine_vars(all_vars, self._role_vars)
 
         if include_params:
+            # TODO: if we leave vars; at higher precedence, we can start deprecating this
             all_vars = combine_vars(all_vars, self.get_role_params(dep_chain=dep_chain))
 
         if only_exports:
