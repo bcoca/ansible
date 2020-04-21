@@ -372,7 +372,7 @@ class Role(Base, Conditional, Taggable, CollectionSearch):
 
         if only_exports:
             # only add from vars: those that are already exported
-            all_vars = combine_vars(all_vars, {k:v for (k,v) in self.vars.items() if k in all_vars})
+            all_vars = combine_vars(all_vars, dict((k, v) for (k, v) in self.vars.items() if k in all_vars))
         else:
             all_vars = combine_vars(all_vars, self.vars)
 
