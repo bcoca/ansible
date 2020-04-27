@@ -1,15 +1,8 @@
-- hosts: localhost
+- name: play and roles
+  hosts: localhost
   gather_facts: valse
-  vars:
-    play_only: play
-    play_and_roles: play
-    play_and_import: play
-    play_and_include: play
-    play_and_role_vars: play
-    play_and_roles_and_role_vars: play
-    play_and_import_and_role_vars: play
-    play_and_include_and_role_vars: play
-    play_and_role_vars_and_role_vars: play
+  vars_files:
+    - vars/play.yml
   roles:
     - name: vars_scope
       vars:
@@ -17,10 +10,68 @@
         roles_and_role_vars: roles
         play_and_roles: roles
         play_and_roles_and_role_vars: roles
+
   pre_tasks:
     - include_tasks: roles/vars_scope/tasks/check_vars.yml
   tasks:
+    - include_tasks: roles/vars_scope/tasks/check_vars.yml
 
+- name: play and import
+  hosts: localhost
+  gather_facts: valse
+  vars_files:
+    - vars/play.yml
+  tasks:
+    - include_tasks: roles/vars_scope/tasks/check_vars.yml
+
+    - name: static import
+      import_role:
+        name: vars_scope
+      vars:
+        import_only: import
+        import_and_role_vars: import
+        play_and_import: import
+        play_and_import_and_role_vars: import
+
+    - include_tasks: roles/vars_scope/tasks/check_vars.yml
+
+- name: play and include
+  hosts: localhost
+  gather_facts: valse
+  vars_files:
+    - vars/play.yml
+  tasks:
+    - include_tasks: roles/vars_scope/tasks/check_vars.yml
+
+    - name: dynamic include
+      include_role:
+        name: vars_scope
+      vars:
+        include_only: include
+        include_and_role_vars: include
+        play_and_include: include
+        play_and_include_and_role_vars: include
+
+    - include_tasks: roles/vars_scope/tasks/check_vars.yml
+
+- name: play and roles and import and include
+  hosts: localhost
+  gather_facts: valse
+  vars:
+  vars_files:
+    - vars/play.yml
+  roles:
+    - name: vars_scope
+      vars:
+        roles_only: roles
+        roles_and_role_vars: roles
+        play_and_roles: roles
+        play_and_roles_and_role_vars: roles
+
+  pre_tasks:
+    - include_tasks: roles/vars_scope/tasks/check_vars.yml
+
+  tasks:
     - include_tasks: roles/vars_scope/tasks/check_vars.yml
 
     - name: static import
