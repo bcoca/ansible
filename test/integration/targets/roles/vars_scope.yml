@@ -1,21 +1,36 @@
 - hosts: localhost
   gather_facts: valse
   vars:
-    test1: play
+    play_only: play
+    play_and_roles: play
+    play_and_import: play
+    play_and_include: play
+    play_and_role_vars: play
+    play_and_roles_and_role_vars: play
+    play_and_import_and_role_vars: play
+    play_and_include_and_role_vars: play
+    play_and_role_vars_and_role_vars: play
   roles:
     - name: vars_scope
       vars:
-        test3: roles
-        test4: roles
+        roles_only: roles
+        roles_and_role_vars: roles
+        play_and_roles: roles
+        play_and_roles_and_role_vars: roles
+  pre_tasks:
+    - include_tasks: roles/vars_scope/tasks/check_vars.yml
   tasks:
 
     - include_tasks: roles/vars_scope/tasks/check_vars.yml
 
     - name: static import
-      include_role:
+      import_role:
         name: vars_scope
       vars:
-        test4: import
+        import_only: import
+        import_and_role_vars: import
+        play_and_import: import
+        play_and_import_and_role_vars: import
 
     - include_tasks: roles/vars_scope/tasks/check_vars.yml
 
@@ -23,6 +38,9 @@
       include_role:
         name: vars_scope
       vars:
-        test4: include
+        include_only: include
+        include_and_role_vars: include
+        play_and_include: include
+        play_and_include_and_role_vars: include
 
     - include_tasks: roles/vars_scope/tasks/check_vars.yml
