@@ -1,0 +1,2 @@
+bugfixes:
+    - colleciton loader name discoverer will now work with symlinks as does plugin loading does (was breaking docs listing).
