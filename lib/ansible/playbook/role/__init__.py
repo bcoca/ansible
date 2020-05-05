@@ -359,17 +359,31 @@ class Role(Base, Conditional, Taggable, CollectionSearch):
         dep_chain = [] if dep_chain is None else dep_chain
 
         all_vars = {}
+
+        # get vars: from parent objects
         all_vars = self.get_inherited_vars(dep_chain)
 
+        # get exported variables from meta/dependencies
+        seen = set()
         for dep in self.get_all_dependencies():
-            all_vars = combine_vars(all_vars, dep.get_vars(include_params=include_params, only_exports=only_exports))
+            # Avoid reruning dupe deps since they can have vars from previous invocations and they accumulate in deps
+            # TODO: re-examine dep loading to see if we are somehow improperly adding the same dep too many times
+            if dep not in seen:
+                # only take 'exportable' vars from deps
+                all_vars = combine_vars(all_vars, dep.get_vars(include_params=False, only_exports=True))
+                seen.add(dep)
 
+        # role_vars come from vars/ in a role
         all_vars = combine_vars(all_vars, self._role_vars)
 
+        # include_params are 'inline variables' in role invocation. - {role: x, varname: value}
         if include_params:
-            # TODO: if we leave vars; at higher precedence, we can start deprecating this
             all_vars = combine_vars(all_vars, self.get_role_params(dep_chain=dep_chain))
+        else:
+            # update with params/inline only if already exported
+            all_vars = combine_vars(all_vars, dict((k, v) for (k, v) in self.get_role_params(dep_chain=dep_chain).items() if k in all_vars))
 
+        # these come from vars: keyword in role invocation. - {role: x, vars: {varname: value}}
         if only_exports:
             # only add from vars: those that are already exported
             all_vars = combine_vars(all_vars, dict((k, v) for (k, v) in self.vars.items() if k in all_vars))
