@@ -360,7 +360,8 @@ class Role(Base, Conditional, Taggable, CollectionSearch):
 
         all_vars = {}
 
-        # get vars: from parent objects
+        # get role_vars: from parent objects
+        # TODO: is this right precedence for inherited role_vars?
         all_vars = self.get_inherited_vars(dep_chain)
 
         # get exported variables from meta/dependencies
