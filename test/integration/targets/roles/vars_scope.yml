@@ -10,9 +10,32 @@
         roles_and_role_vars: roles
         play_and_roles: roles
         play_and_roles_and_role_vars: roles
+        defined:
+            default_only: default
+            play_only: play
+            play_and_import: play
+            play_and_include: play
+            play_and_role_vars: role_vars
+            roles_only: roles
+            role_vars_only: role_vars
+            roles_and_role_vars: roles
+            play_and_roles: roles
+            play_and_roles_and_role_vars: roles
 
   pre_tasks:
-    - include_tasks: roles/vars_scope/tasks/check_vars.yml
+    - include_tasks: tasks/check_vars.yml
+      vars:
+        defined:
+            default_only: default
+            play_only: play
+            play_and_roles: play
+            play_and_import: play
+            play_and_include: play
+            play_and_role_vars: role_vars
+            play_and_roles_and_role_vars: roles
+            play_and_import_and_role_vars: import
+            role_vars_only: role_vars
+            roles_and_role_vars: roles
   tasks:
     - include_tasks: roles/vars_scope/tasks/check_vars.yml
 
