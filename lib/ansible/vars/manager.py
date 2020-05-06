@@ -201,10 +201,11 @@ class VariableManager:
             basedirs = [self._loader.get_basedir()]
 
         if play:
-            # first we compile any vars specified in defaults/main.yml
-            # for all roles within the specified play
-            for role in play.get_roles():
-                all_vars = _combine_and_track(all_vars, role.get_default_vars(), "role '%s' defaults" % role.name)
+            if not C.DEFAULT_PRIVATE_ROLE_VARS:
+                # first we compile any vars specified in defaults/main.yml
+                # for all roles within the specified play
+                for role in play.get_roles():
+                    all_vars = _combine_and_track(all_vars, role.get_default_vars(), "role '%s' defaults" % role.name)
 
         if task:
             # set basedirs
