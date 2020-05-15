@@ -135,7 +135,7 @@ class Role(Base, Conditional, Taggable, CollectionSearch):
         return self._role_name
 
     @staticmethod
-    def load(role_include, play, parent_role=None, from_files=None, from_include=False):
+    def load(role_include, play, parent_role=None, from_files=None, from_include=False, public=True):
 
         if from_files is None:
             from_files = {}
@@ -169,7 +169,7 @@ class Role(Base, Conditional, Taggable, CollectionSearch):
             #  for the in-flight in role cache as a sentinel that we're already trying to load
             #  that role?)
             # see https://github.com/ansible/ansible/issues/61527
-            r = Role(play=play, from_files=from_files, from_include=from_include)
+            r = Role(play=play, from_files=from_files, from_include=from_include, public=public)
             r._load_role_data(role_include, parent_role=parent_role)
 
             if role_include.get_name() not in play.ROLE_CACHE:
