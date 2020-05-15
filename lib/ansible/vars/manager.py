@@ -205,8 +205,8 @@ class VariableManager:
                 # first we compile any vars specified in defaults/main.yml
                 # for all roles within the specified play
                 for role in play.get_roles():
-                    # TODO: check per role privacy setting?
-                    all_vars = _combine_and_track(all_vars, role.get_default_vars(), "role '%s' defaults" % role.name)
+                    if role.public:
+                        all_vars = _combine_and_track(all_vars, role.get_default_vars(), "role '%s' defaults" % role.name)
 
         if task:
             # set basedirs
@@ -390,7 +390,8 @@ class VariableManager:
             if not C.DEFAULT_PRIVATE_ROLE_VARS:
                 # TODO: check per role privacy?
                 for role in play.get_roles():
-                    all_vars = _combine_and_track(all_vars, role.get_vars(include_params=False, only_exports=True), "role '%s' exported vars" % role.name)
+                    if role.public:
+                        all_vars = _combine_and_track(all_vars, role.get_vars(include_params=False, only_exports=True), "role '%s' exported vars" % role.name)
 
         # next, we merge in the vars from the role, which will specifically
         # follow the role dependency chain, and then we merge in the tasks

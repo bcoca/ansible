@@ -97,12 +97,13 @@ class Role(Base, Conditional, Taggable, CollectionSearch):
     _delegate_to = FieldAttribute(isa='string')
     _delegate_facts = FieldAttribute(isa='bool')
 
-    def __init__(self, play=None, from_files=None, from_include=False):
+    def __init__(self, play=None, from_files=None, from_include=False, public=True):
         self._role_name = None
         self._role_path = None
         self._role_collection = None
         self._role_params = dict()
         self._loader = None
+        self.public = public
 
         self._metadata = None
         self._play = play
