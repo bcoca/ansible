@@ -381,15 +381,9 @@ class Role(Base, Conditional, Taggable, CollectionSearch):
         # include_params are 'inline variables' in role invocation. - {role: x, varname: value}
         if include_params:
             all_vars = combine_vars(all_vars, self.get_role_params(dep_chain=dep_chain))
-        else:
-            # update with params/inline only if already exported
-            all_vars = combine_vars(all_vars, dict((k, v) for (k, v) in self.get_role_params(dep_chain=dep_chain).items() if k in all_vars))
 
         # these come from vars: keyword in role invocation. - {role: x, vars: {varname: value}}
-        if only_exports:
-            # only add from vars: those that are already exported
-            all_vars = combine_vars(all_vars, dict((k, v) for (k, v) in self.vars.items() if k in all_vars))
-        else:
+        if not only_exports:
             all_vars = combine_vars(all_vars, self.vars)
 
         return all_vars
