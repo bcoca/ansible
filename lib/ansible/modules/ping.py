@@ -8,6 +8,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+import sys
 
 DOCUMENTATION = '''
 ---
@@ -56,13 +57,14 @@ ping:
     sample: pong
 '''
 
-from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.basic import AnsibleModule, PASS_VARS
 
 
 def main():
     module = AnsibleModule(
         argument_spec=dict(
             data=dict(type='str', default='pong'),
+            diagnostics=dict(type='bool'),
         ),
         supports_check_mode=True
     )
@@ -70,12 +72,18 @@ def main():
     if module.params['data'] == 'crash':
         raise Exception("boom")
 
-    result = dict(
-        ping=module.params['data'],
-    )
+    result = dict(ping=module.params['data'])
+
+    if module.params['diagnostics']:
+        result['internal'] = {}
+        for p in PASS_VARS.keys():
+            result['internal'][p] = getattr(module, PASS_VARS[p][0])
+
+        result['module'] = __file__
+        result['interpreter'] = sys.executable
+        result['arguments'] = sys.argv
 
     module.exit_json(**result)
-
 
 if __name__ == '__main__':
     main()

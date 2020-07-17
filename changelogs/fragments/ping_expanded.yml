@@ -1,0 +1,2 @@
+minor_changes:
+  - add more information on ping return for more complete diagnostics of 'ansible readyness'.
