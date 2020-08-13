@@ -25,6 +25,11 @@ description:
     directive (which was added in Ansible 2.1) to bypass autodetection.
   - This module is also supported for Windows targets.
 version_added: "0.6"
+deprecated:
+    why: it has too many conflicting behaviours depending on keyword combinations and it was unclear how it should behave in each case.
+        new actions were developed that were specific about each case and related behaviours.
+    version: "2.15"
+    alternatives: include_tasks, import_tasks, import_playbooks
 options:
   free-form:
     description:
