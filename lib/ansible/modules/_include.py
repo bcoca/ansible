@@ -29,7 +29,7 @@ deprecated:
     why: it has too many conflicting behaviours depending on keyword combinations and it was unclear how it should behave in each case.
         new actions were developed that were specific about each case and related behaviours.
     alternative: include_tasks, import_tasks, import_playbook
-    removed_in: "2.15"
+    version: "2.15"
 options:
   free-form:
     description:
