@@ -426,11 +426,6 @@ class VariableManager:
         if task:
             all_vars['environment'] = task.environment
 
-        # 'vars' magic var
-        if task or play:
-            # has to be copy, otherwise recursive ref
-            all_vars['vars'] = all_vars.copy()
-
         # if we have a task and we're delegating to another host, figure out the
         # variables for that host now so we don't have to rely on hostvars later
         if task and task.delegate_to is not None and include_delegate_to:

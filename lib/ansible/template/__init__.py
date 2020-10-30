@@ -52,7 +52,7 @@ from ansible.module_utils.compat.importlib import import_module
 from ansible.plugins.loader import filter_loader, lookup_loader, test_loader
 from ansible.template.safe_eval import safe_eval
 from ansible.template.template import AnsibleJ2Template
-from ansible.template.vars import AnsibleJ2Vars
+from ansible.template.vars import AnsibleJ2Vars, AutoVars
 from ansible.utils.collection_loader import AnsibleCollectionRef
 from ansible.utils.display import Display
 from ansible.utils.collection_loader._collection_finder import _get_collection_metadata
@@ -631,6 +631,7 @@ class Templar:
         self.environment.globals['query'] = self.environment.globals['q'] = self._query_lookup
         self.environment.globals['now'] = self._now_datetime
         self.environment.globals['finalize'] = self._finalize
+        self.environment.globals['vars'] = AutoVars(self)
 
         # the current rendering context under which the templar class is working
         self.cur_context = None
