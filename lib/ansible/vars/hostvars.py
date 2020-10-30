@@ -20,6 +20,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 from ansible.module_utils.common._collections_compat import Mapping
+from ansible.utils.vars import combine_vars
 from ansible.template import Templar, AnsibleUndefined
 from ansible.template.vars import AutoVars
 
@@ -35,6 +36,7 @@ class HostVars(Mapping):
         self._loader = loader
         self._variable_manager = variable_manager
         variable_manager._hostvars = self
+        self._templating_vars = {}
         self._templar = None
 
     def set_variable_manager(self, variable_manager):
@@ -43,6 +45,9 @@ class HostVars(Mapping):
 
     def set_inventory(self, inventory):
         self._inventory = inventory
+
+    def set_available_vars(self, myvars):
+        self._templating_vars = myvars
 
     def _find_host(self, host_name):
         # does not use inventory.hosts so it can create localhost on demand
@@ -86,13 +91,14 @@ class HostVars(Mapping):
         if isinstance(raw_data, AnsibleUndefined):
             data = raw_data
         else:
+            tvars = combine_vars(self._templating_vars, raw_data)
             if self._templar is None:
-                # initialize temlpar if we had not before
-                self._templar = Templar(variables=raw_data, loader=self._loader)
+                # initialize templar if we had not before
+                self._templar = Templar(variables=tvars, loader=self._loader)
             else:
-                self._templar.available_variables = raw_data
+                self._templar.available_variables = tvars
 
-            data = AutoVars(self._templar)
+            data = AutoVars(self._templar, raw_data)
 
         return data
 
