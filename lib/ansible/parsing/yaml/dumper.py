@@ -23,8 +23,9 @@ import yaml
 
 from ansible.module_utils.six import PY3
 from ansible.parsing.yaml.objects import AnsibleUnicode, AnsibleSequence, AnsibleMapping, AnsibleVaultEncryptedUnicode
+from ansible.template.vars import AutoVars
 from ansible.utils.unsafe_proxy import AnsibleUnsafeText, AnsibleUnsafeBytes
-from ansible.vars.hostvars import HostVars, HostVarsVars
+from ansible.vars.hostvars import HostVars
 
 
 class AnsibleDumper(yaml.SafeDumper):
@@ -72,7 +73,7 @@ AnsibleDumper.add_representer(
 )
 
 AnsibleDumper.add_representer(
-    HostVarsVars,
+    AutoVars,
     represent_hostvars,
 )
 
