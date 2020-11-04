@@ -113,10 +113,10 @@ class AnsibleJ2Vars(Mapping):
 
         variable = self._templar.available_variables[varname]
 
-        # HostVars is special, return it as-is, as is the special variable
-        # 'vars', which contains the vars structure
+        # HostVars and AutoVars are special self templting returns.
+        # this is how 'vars' and 'hostvars' magic variables are implemented.
         from ansible.vars.hostvars import HostVars
-        if isinstance(variable, AutoVars) or isinstance(variable, HostVars) or hasattr(variable, '__UNSAFE__'):
+        if isinstance(variable, (AutoVars, HostVars)) or hasattr(variable, '__UNSAFE__'):
             return variable
         else:
             value = None
