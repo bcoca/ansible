@@ -116,7 +116,7 @@ class AnsibleJ2Vars(Mapping):
         # HostVars is special, return it as-is, as is the special variable
         # 'vars', which contains the vars structure
         from ansible.vars.hostvars import HostVars
-        if isinstance(variable, dict) and varname == "vars" or isinstance(variable, HostVars) or hasattr(variable, '__UNSAFE__'):
+        if isinstance(variable, AutoVars) or isinstance(variable, HostVars) or hasattr(variable, '__UNSAFE__'):
             return variable
         else:
             value = None
@@ -152,7 +152,11 @@ class AutoVars(Mapping):
     ''' A special view of template vars on demand. '''
 
     def __init__(self, templar, myvars=None):
+
         self._t = templar
+
+        # this allows for vars that are part of this object to be
+        # resolved even if they depend on vars not contained within.
         if myvars is None:
             self._vars = self._t._available_variables
         else:
