@@ -24,7 +24,7 @@ from jinja2.utils import missing
 from ansible.errors import AnsibleError, AnsibleUndefinedVariable
 from ansible.module_utils.six import iteritems
 from ansible.module_utils._text import to_native
-from ansible.module_utils.common._collections_compat import Mapping
+from ansible.module_utils.common._collections_compat import Mapping, Sequence
 
 STATIC_VARS = [
     'ansible_version',
@@ -45,7 +45,30 @@ STATIC_VARS = [
     'ungrouped',
 ]
 
-__all__ = ['AnsibleJ2Vars', 'AutoVars']
+__all__ = ['AnsibleJ2Vars', 'AutoVars', 'is_unsafe']
+
+
+def is_unsafe(val):
+    '''
+    Our helper function, which will also recursively check dict and
+    list entries due to the fact that they may be repr'd and contain
+    a key or value which contains jinja2 syntax and would otherwise
+    lose the AnsibleUnsafe value.
+    '''
+
+    if isinstance(val, Mapping):
+        for key in val.keys():
+            if is_unsafe(val[key]):
+                return True
+    elif isinstance(val, Sequence):
+        for item in val:
+            if is_unsafe(item):
+                return True
+    elif getattr(val, '__UNSAFE__', False) is True:
+        # TODO: should we change to 'unsafe' class check?
+        return True
+
+    return False
 
 
 class AnsibleJ2Vars(Mapping):
@@ -163,20 +186,24 @@ class AutoVars(Mapping):
             self._vars = myvars
 
     def __getitem__(self, var):
-        return self._t.template(self._vars[var], fail_on_undefined=False, static_vars=STATIC_VARS)
+        if is_unsafe(self._vars[var]):
+            res = self._vars[var]
+        else:
+            res = self._t.template(self._vars[var], fail_on_undefined=False, static_vars=STATIC_VARS)
+        return res
 
     def __contains__(self, var):
         return (var in self._vars)
 
     def __iter__(self):
         for var in self._vars.keys():
-            yield var
+            yield self.__getitem__(var)
 
     def __len__(self):
         return len(self._vars.keys())
 
     def __repr__(self):
-        return repr(self._t.template(self._vars, fail_on_undefined=False, static_vars=STATIC_VARS))
+        return repr(self.__iter__())
 
     def __readonly__(self, *args, **kwargs):
         raise RuntimeError("Cannot modify this variable, it is read only.")
