@@ -612,7 +612,6 @@ class Templar:
         self.environment.globals['query'] = self.environment.globals['q'] = self._query_lookup
         self.environment.globals['now'] = self._now_datetime
         self.environment.globals['finalize'] = self._finalize
-        self.environment.globals['vars'] = AutoVars(self)
 
         # the current rendering context under which the templar class is working
         self.cur_context = None
@@ -1090,7 +1089,7 @@ class Templar:
             if disable_lookups:
                 t.globals['query'] = t.globals['q'] = t.globals['lookup'] = self._fail_lookup
 
-            jvars = AnsibleJ2Vars(self, t.globals)
+            jvars = AnsibleJ2Vars(self, t.globals, {'vars': AutoVars(self)})
 
             self.cur_context = new_context = t.new_context(jvars, shared=True)
             rf = t.root_render_func(new_context)
