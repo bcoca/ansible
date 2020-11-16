@@ -18,15 +18,15 @@ from collections import defaultdict, namedtuple
 from ansible import constants as C
 from ansible.errors import AnsibleError, AnsiblePluginCircularRedirect, AnsiblePluginRemovedError, AnsibleCollectionUnsupportedVersionError
 from ansible.module_utils._text import to_bytes, to_text, to_native
+from ansible.module_utils.common._collections_compat import Mapping
 from ansible.module_utils.compat.importlib import import_module
 from ansible.module_utils.six import string_types
 from ansible.parsing.utils.yaml import from_yaml
-from ansible.parsing.yaml.loader import AnsibleLoader
 from ansible.plugins import get_plugin_class, MODULE_CACHE, PATH_CACHE, PLUGIN_PATH_CACHE
 from ansible.utils.collection_loader import AnsibleCollectionConfig, AnsibleCollectionRef
 from ansible.utils.collection_loader._collection_finder import _AnsibleCollectionFinder, _get_collection_metadata
 from ansible.utils.display import Display
-from ansible.utils.plugin_docs import add_fragments
+from ansible.utils.plugin_docs import get_pymodule_docs
 from ansible import __version__ as ansible_version
 
 # TODO: take the packaging dep, or vendor SpecifierSet?
@@ -377,15 +377,14 @@ class PluginLoader:
         if self.class_name:
             type_name = get_plugin_class(self.class_name)
 
-            # if type name != 'module_doc_fragment':
             if type_name in C.CONFIGURABLE_PLUGINS:
-                dstring = AnsibleLoader(getattr(module, 'DOCUMENTATION', ''), file_name=path).get_single_data()
-                if dstring:
-                    add_fragments(dstring, path, fragment_loader=fragment_loader, is_module=(type_name == 'module'))
+                docs = get_pymodule_docs(module, section='DOCUMENTATION', floader=fragment_loader)
 
-                if dstring and 'options' in dstring and isinstance(dstring['options'], dict):
-                    C.config.initialize_plugin_configuration_definitions(type_name, name, dstring['options'])
+                if docs and 'options' in docs and isinstance(docs['options'], Mapping):
+                    C.config.initialize_plugin_configuration_definitions(type_name, name, docs['options'])
                     display.debug('Loaded config def from plugin (%s/%s)' % (type_name, name))
+                else:
+                    display.debug('No config to load for plugin (%s/%s)' % (type_name, name))
 
     def add_directory(self, directory, with_subdir=False):
         ''' Adds an additional directory to the search path '''

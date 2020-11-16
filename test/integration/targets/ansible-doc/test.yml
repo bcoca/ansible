@@ -2,6 +2,7 @@
   gather_facts: no
   environment:
     ANSIBLE_LIBRARY: "{{ playbook_dir }}/library"
+    ANSIBLE_DOC_FRAGMENT_PLUGINS: "{{ playbook_dir }}/doc_fragments"
   tasks:
     - name: module with missing description return docs
       command: ansible-doc test_docs_missing_description
@@ -31,7 +32,22 @@
           - actual_output == expected_output
 
     - name: module with return docs
-      command: ansible-doc test_docs_returns
+      command: ansible-doc test_docs_return_frag
+      register: result
+      ignore_errors: true
+
+    - set_fact:
+        actual_output: >-
+          {{ result.stdout | regex_replace('^(> [A-Z_]+ +\().+library/([a-z_]+.py)\)$', '\1library/\2)', multiline=true) }}
+        expected_output: "{{ lookup('file', 'test_docs_returns.output') }}"
+
+    - assert:
+        that:
+          - result is succeeded
+          - actual_output == expected_output
+
+    - name: module with return docs fragments
+      command: ansible-doc test_docs_return_fragments
       register: result
       ignore_errors: true
 

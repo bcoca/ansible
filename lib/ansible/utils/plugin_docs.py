@@ -6,11 +6,11 @@ __metaclass__ = type
 
 from ansible import constants as C
 from ansible.release import __version__ as ansible_version
-from ansible.errors import AnsibleError, AnsibleAssertionError
+from ansible.errors import AnsibleError
 from ansible.module_utils.six import string_types
 from ansible.module_utils._text import to_native
 from ansible.module_utils.common._collections_compat import MutableMapping, MutableSet, MutableSequence
-from ansible.parsing.plugin_docs import read_docstring
+from ansible.parsing.plugin_docs import read_docstring, DOCSTRING_TO_VAR
 from ansible.parsing.yaml.loader import AnsibleLoader
 from ansible.utils.display import Display
 
@@ -22,6 +22,9 @@ REJECTLIST = {
     'MODULE': frozenset(('async_wrapper',)),
     'CACHE': frozenset(('base',)),
 }
+
+
+FRAGMENTS = frozenset(['DOCUMENTATION', 'RETURN'])
 
 
 def merge_fragment(target, source):
@@ -119,7 +122,7 @@ def remove_current_collection_from_versions_and_dates(fragment, collection_name,
     _process_versions_and_dates(fragment, is_module, return_docs, remove)
 
 
-def add_fragments(doc, filename, fragment_loader, is_module=False):
+def add_fragments(doc, filename, fragment_loader, is_module=False, section='DOCUMENTATION'):
 
     fragments = doc.pop('extends_documentation_fragment', [])
 
@@ -135,7 +138,11 @@ def add_fragments(doc, filename, fragment_loader, is_module=False):
     # and retry the load.
     for fragment_slug in fragments:
         fragment_name = fragment_slug
-        fragment_var = 'DOCUMENTATION'
+
+        if section not in DOCSTRING_TO_VAR:
+            raise AnsibleError("Invalid documentation section requested: %s" % section)
+
+        fragment_var = section
 
         fragment_class = fragment_loader.get(fragment_name)
         if fragment_class is None and '.' in fragment_slug:
@@ -179,17 +186,18 @@ def add_fragments(doc, filename, fragment_loader, is_module=False):
                     doc['seealso'] = []
                 doc['seealso'].extend(seealso)
 
-        if 'options' not in fragment:
-            raise Exception("missing options in fragment (%s), possibly misformatted?: %s" % (fragment_name, filename))
+        if fragment_var == 'DOCUMENTATION':
+            if 'options' not in fragment:
+                raise Exception("missing options in fragment (%s), possibly misformatted?: %s" % (fragment_name, filename))
 
-        # ensure options themselves are directly merged
-        if 'options' in doc:
-            try:
-                merge_fragment(doc['options'], fragment.pop('options'))
-            except Exception as e:
-                raise AnsibleError("%s options (%s) of unknown type: %s" % (to_native(e), fragment_name, filename))
-        else:
-            doc['options'] = fragment.pop('options')
+            # ensure options themselves are directly merged
+            if 'options' in doc:
+                try:
+                    merge_fragment(doc['options'], fragment.pop('options'))
+                except Exception as e:
+                    raise AnsibleError("%s options (%s) of unknown type: %s" % (to_native(e), fragment_name, filename))
+            else:
+                doc['options'] = fragment.pop('options')
 
         # merge rest of the sections
         try:
@@ -208,18 +216,16 @@ def get_docstring(filename, fragment_loader, verbose=False, ignore_errors=False,
 
     data = read_docstring(filename, verbose=verbose, ignore_errors=ignore_errors)
 
-    if data.get('doc', False):
-        # add collection name to versions and dates
-        if collection_name is not None:
-            add_collection_to_versions_and_dates(data['doc'], collection_name, is_module=is_module)
+    for section in FRAGMENTS:
+        key = DOCSTRING_TO_VAR[section]
 
-        # add fragments to documentation
-        add_fragments(data['doc'], filename, fragment_loader=fragment_loader, is_module=is_module)
+        if data.get(key, False):
+            # add fragments to documentation
+            add_fragments(data[key], filename, fragment_loader=fragment_loader, is_module=is_module, section=section)
 
-    if data.get('returndocs', False):
-        # add collection name to versions and dates
-        if collection_name is not None:
-            add_collection_to_versions_and_dates(data['returndocs'], collection_name, is_module=is_module, return_docs=True)
+            # add collection name to versions and dates
+            if collection_name is not None:
+                add_collection_to_versions_and_dates(data[key], collection_name, is_module=is_module)
 
     return data['doc'], data['plainexamples'], data['returndocs'], data['metadata']
 
@@ -256,3 +262,33 @@ def get_versioned_doclink(path):
         return '{0}{1}/{2}'.format(base_url, doc_version, path)
     except Exception as ex:
         return '(unable to create versioned doc link for path {0}: {1})'.format(path, to_native(ex))
+
+
+def get_pymodule_docs(pymodule, section=None, floader=None):
+    ''' faster method that gets docs from loaded python module '''
+
+    if section is None:
+        sections = DOCSTRING_TO_VAR.keys()
+    else:
+        if section not in DOCSTRING_TO_VAR:
+            raise AnsibleError("Invalid documentation section requested: %s" % section)
+        sections = [section]
+
+    path = pymodule.__file__
+
+    data = {}
+    for s in sections:
+        dstring = getattr(pymodule, s, '')
+        try:
+            dstring = AnsibleLoader(dstring, file_name=path).get_single_data()
+        except Exception as e:
+            if dstring and s in FRAGMENTS:
+                # sections that support fragments must be dicts
+                raise AnsibleError("Invalid format for section '%s': %s" % (s, to_native(e)))
+
+        if s in FRAGMENTS and isinstance(dstring, MutableMapping):
+            add_fragments(dstring, path, fragment_loader=floader, section=s)
+
+        data[DOCSTRING_TO_VAR[s]] = dstring
+
+    return data

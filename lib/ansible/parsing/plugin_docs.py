@@ -12,6 +12,13 @@ from ansible.utils.display import Display
 
 display = Display()
 
+DOCSTRING_TO_VAR = {
+    'DOCUMENTATION': 'doc',
+    'EXAMPLES': 'plainexamples',
+    'RETURN': 'returndocs',
+    'ANSIBLE_METADATA': 'metadata',  # NOTE: now unused, but kept for backwards compat
+}
+
 
 # NOTE: should move to just reading the variable as we do in plugin_loader since we already load as a 'module'
 # which is much faster than ast parsing ourselves.
@@ -30,13 +37,6 @@ def read_docstring(filename, verbose=True, ignore_errors=True):
         'seealso': None,
     }
 
-    string_to_vars = {
-        'DOCUMENTATION': 'doc',
-        'EXAMPLES': 'plainexamples',
-        'RETURN': 'returndocs',
-        'ANSIBLE_METADATA': 'metadata',  # NOTE: now unused, but kept for backwards compat
-    }
-
     try:
         with open(filename, 'rb') as b_module_data:
             M = ast.parse(b_module_data.read())
@@ -51,8 +51,8 @@ def read_docstring(filename, verbose=True, ignore_errors=True):
                         display.warning("Failed to assign id for %s on %s, skipping" % (t, filename))
                         continue
 
-                    if theid in string_to_vars:
-                        varkey = string_to_vars[theid]
+                    if theid in DOCSTRING_TO_VAR:
+                        varkey = DOCSTRING_TO_VAR[theid]
                         if isinstance(child.value, ast.Dict):
                             data[varkey] = ast.literal_eval(child.value)
                         else:
