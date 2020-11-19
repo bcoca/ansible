@@ -264,7 +264,7 @@ def get_versioned_doclink(path):
         return '(unable to create versioned doc link for path {0}: {1})'.format(path, to_native(ex))
 
 
-def get_pymodule_docs(pymodule, section=None, floader=None):
+def get_pymodule_docs(pymodule, path=None, section=None, floader=None):
     ''' faster method that gets docs from loaded python module '''
 
     if section is None:
@@ -274,7 +274,8 @@ def get_pymodule_docs(pymodule, section=None, floader=None):
             raise AnsibleError("Invalid documentation section requested: %s" % section)
         sections = [section]
 
-    path = pymodule.__file__
+    if path is None:
+        path = pymodule.__file__
 
     data = {}
     for s in sections:
