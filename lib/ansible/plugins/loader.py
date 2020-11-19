@@ -378,7 +378,7 @@ class PluginLoader:
             type_name = get_plugin_class(self.class_name)
 
             if type_name in C.CONFIGURABLE_PLUGINS:
-                docs = get_pymodule_docs(module, section='DOCUMENTATION', floader=fragment_loader)
+                docs = get_pymodule_docs(module, section='DOCUMENTATION', floader=fragment_loader).get('doc', {})
 
                 if docs and 'options' in docs and isinstance(docs['options'], Mapping):
                     C.config.initialize_plugin_configuration_definitions(type_name, name, docs['options'])
