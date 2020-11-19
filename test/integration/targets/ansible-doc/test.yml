@@ -32,7 +32,7 @@
           - actual_output == expected_output
 
     - name: module with return docs
-      command: ansible-doc test_docs_return_frag
+      command: ansible-doc test_docs_return_fragments
       register: result
       ignore_errors: true
 
