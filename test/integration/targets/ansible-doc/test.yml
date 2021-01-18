@@ -41,10 +41,11 @@
           {{ result.stdout | regex_replace('^(> [A-Z_]+ +\().+library/([a-z_]+.py)\)$', '\1library/\2)', multiline=true) }}
         expected_output: "{{ lookup('file', 'test_docs_returns.output') }}"
 
-    - assert:
+    - name: compare output (skip path as it might be diff)
+      assert:
         that:
           - result is succeeded
-          - actual_output == expected_output
+          - actual_output.splitlines()[1:] == expected_output.splitlines()[1:]
 
     - name: module with return docs fragments
       command: ansible-doc test_docs_return_fragments
@@ -56,10 +57,11 @@
           {{ result.stdout | regex_replace('^(> [A-Z_]+ +\().+library/([a-z_]+.py)\)$', '\1library/\2)', multiline=true) }}
         expected_output: "{{ lookup('file', 'test_docs_returns.output') }}"
 
-    - assert:
+    - name: compare output (skip path as it might be diff)
+      assert:
         that:
           - result is succeeded
-          - actual_output == expected_output
+          - actual_output.splitlines()[1:] == expected_output.splitlines()[1:]
 
     - name: module with broken return docs
       command: ansible-doc test_docs_returns_broken
@@ -162,4 +164,4 @@
         expected_output: "{{ lookup('file', 'test_docs_yaml_anchors.output') }}"
     - assert:
         that:
-          - actual_output == expected_output
+          - actual_output.splitlines()[1:] == expected_output.splitlines()[1:]
