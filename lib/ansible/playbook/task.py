@@ -376,20 +376,6 @@ class Task(Base, Conditional, Taggable, CollectionSearch):
         '''
         return value
 
-    def get_vars(self):
-        all_vars = dict()
-        if self._parent:
-            all_vars.update(self._parent.get_vars())
-
-        all_vars.update(self.vars)
-
-        if 'tags' in all_vars:
-            del all_vars['tags']
-        if 'when' in all_vars:
-            del all_vars['when']
-
-        return all_vars
-
     def get_include_params(self):
         all_vars = dict()
         if self._parent:

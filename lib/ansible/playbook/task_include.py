@@ -117,20 +117,11 @@ class TaskInclude(Task):
         we need to include the args of the include into the vars as
         they are params to the included tasks. But ONLY for 'include'
         '''
-        if self.action not in C._ACTION_INCLUDE:
-            all_vars = super(TaskInclude, self).get_vars()
-        else:
-            all_vars = dict()
-            if self._parent:
-                all_vars.update(self._parent.get_vars())
 
-            all_vars.update(self.vars)
+        all_vars = super(TaskInclude, self).get_vars()
+
+        if self.action in C._ACTION_INCLUDE:
             all_vars.update(self.args)
-
-            if 'tags' in all_vars:
-                del all_vars['tags']
-            if 'when' in all_vars:
-                del all_vars['when']
 
         return all_vars
 

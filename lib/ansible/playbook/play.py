@@ -287,8 +287,6 @@ class Play(Base, Taggable, CollectionSearch):
 
         return block_list
 
-    def get_vars(self):
-        return self.vars.copy()
 
     def get_vars_files(self):
         if self.vars_files is None:

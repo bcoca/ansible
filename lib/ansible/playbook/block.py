@@ -72,19 +72,6 @@ class Block(Base, Conditional, CollectionSearch, Taggable):
         '''object comparison based on _uuid'''
         return self._uuid != other._uuid
 
-    def get_vars(self):
-        '''
-        Blocks do not store variables directly, however they may be a member
-        of a role or task include which does, so return those if present.
-        '''
-
-        all_vars = self.vars.copy()
-
-        if self._parent:
-            all_vars.update(self._parent.get_vars())
-
-        return all_vars
-
     @staticmethod
     def load(data, play=None, parent_block=None, role=None, task_include=None, use_handlers=False, variable_manager=None, loader=None):
         implicit = not Block.is_block(data)

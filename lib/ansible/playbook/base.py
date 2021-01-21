@@ -628,3 +628,14 @@ class Base(FieldAttributeBase):
 
     # used to hold sudo/su stuff
     DEPRECATED_ATTRIBUTES = []
+
+    # placeholders
+    _parent = None
+
+
+    def get_vars(self):
+
+        if self._parent is None:
+            return self.vars.copy()
+        else:
+            return combine_vars(self._parent.get_vars(), self.vars)
