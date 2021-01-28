@@ -413,9 +413,9 @@ def set_git_ssh_env(key_file, ssh_opts, git_version):
     # try to avoid prompts
     force_batch = 'BatchMode=yes'
     if ssh_opts is None:
-        ssh_opts = ' -o %s ' % (force_batch)
+        ssh_opts = ' -o %s' % (force_batch)
     elif force_batch not in ssh_opts:
-        ssh_opts += ' -o %s ' % (force_batch)
+        ssh_opts += ' -o %s' % (force_batch)
 
     if key_file:
         os.environ["GIT_KEY"] = key_file
@@ -427,19 +427,15 @@ def set_git_ssh_env(key_file, ssh_opts, git_version):
     # we should always have finalized string here.
     os.environ["GIT_SSH_OPTS"] = ssh_opts
 
-    # older than this does not know how to use git_ssh_opts
+    # older than 2.3 does not know how to use git_ssh_opts,
+    # so we force it into ssh command var
     if git_version < LooseVersion('2.3.0'):
 
-        if os.environ.get("GIT_SSH"):
-            os.environ["GIT_SSH"] = '%s $GIT_SSH_OPTS' % os.environ["GIT_SSH"]
-        else:
-            os.environ["GIT_SSH"] = 'ssh $GIT_SSH_OPTS'
+        # force use of git_ssh_opts via wrapper, preserve existing
+        os.environ["GIT_SSH"] = '%s $GIT_SSH_OPTS' % os.environ.get"GIT_SSH", 'ssh')
 
-        # much older git uses git_ssh_command
-        if os.environ.get("GIT_SSH_COMMAND"):
-            os.environ["GIT_SSH_COMMAND"] = '%s $GIT_SSH_OPTS' % os.environ["GIT_SSH_COMMAND"]
-        else:
-            os.environ["GIT_SSH_COMMAND"] = 'ssh $GIT_SSH_OPTS'
+        # same as above but older git uses git_ssh_command
+        os.environ["GIT_SSH_COMMAND"] = '%s $GIT_SSH_OPTS' % os.environ.get("GIT_SSH_COMMAND", 'ssh')
 
 
 def get_version(module, git_path, dest, ref="HEAD"):
