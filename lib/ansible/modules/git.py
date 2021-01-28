@@ -404,6 +404,7 @@ def get_submodule_update_params(module, git_path, cwd):
 
     return params
 
+
 def set_git_ssh_env(key_file, ssh_opts, git_version):
     ''' use environment variables to configure git's ssh execution,
         which varies by version but this functino should handle all.
@@ -1077,6 +1078,7 @@ def create_archive(git_path, module, dest, archive, archive_prefix, version, rep
         result.update(changed=True)
 
 # ===========================================
+
 
 def main():
     module = AnsibleModule(
