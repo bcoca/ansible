@@ -432,7 +432,7 @@ def set_git_ssh_env(key_file, ssh_opts, git_version):
     if git_version < LooseVersion('2.3.0'):
 
         # force use of git_ssh_opts via wrapper, preserve existing
-        os.environ["GIT_SSH"] = '%s $GIT_SSH_OPTS' % os.environ.get"GIT_SSH", 'ssh')
+        os.environ["GIT_SSH"] = '%s $GIT_SSH_OPTS' % os.environ.get("GIT_SSH", 'ssh')
 
         # same as above but older git uses git_ssh_command
         os.environ["GIT_SSH_COMMAND"] = '%s $GIT_SSH_OPTS' % os.environ.get("GIT_SSH_COMMAND", 'ssh')
