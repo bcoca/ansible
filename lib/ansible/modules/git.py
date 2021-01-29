@@ -405,7 +405,41 @@ def get_submodule_update_params(module, git_path, cwd):
     return params
 
 
-def set_git_ssh_env(key_file, ssh_opts, git_version):
+def write_ssh_wrapper(module):
+    try:
+        # make sure we have full permission to the module_dir, which
+        # may not be the case if we're sudo'ing to a non-root user
+        if os.access(module.tmpdir, os.W_OK | os.R_OK | os.X_OK):
+            fd, wrapper_path = tempfile.mkstemp(prefix=module.tmpdir + '/')
+        else:
+            raise OSError
+    except (IOError, OSError):
+        fd, wrapper_path = tempfile.mkstemp()
+
+    fh = os.fdopen(fd, 'w+b')
+    template = b("""#!/bin/sh
+if [ ! -z "$GIT_SSH_COMMAND" ]; then
+    $GIT_SSH_COMMAND $GIT_SSH_OPTS
+else
+    if [ ! -z "$GIT_SSH" ]; then
+        $GIT_SSH $GIT_SSH_OPTS
+    else
+        ssh $GIT_SSH_OPTS
+    fi
+fi """)
+
+    fh.write(template)
+    fh.close()
+    st = os.stat(wrapper_path)
+    os.chmod(wrapper_path, st.st_mode | stat.S_IEXEC)
+
+    # ensure we cleanup after ourselves
+    module.add_cleanup_file(path=wrapper_path)
+
+    return wrapper_path
+
+
+def set_git_ssh_env(key_file, ssh_opts, git_version, module):
     ''' use environment variables to configure git's ssh execution,
         which varies by version but this functino should handle all.
      '''
@@ -431,11 +465,12 @@ def set_git_ssh_env(key_file, ssh_opts, git_version):
     # so we force it into ssh command var
     if git_version < LooseVersion('2.3.0'):
 
-        # force use of git_ssh_opts via wrapper, preserve existing
-        os.environ["GIT_SSH"] = '%s $GIT_SSH_OPTS' % os.environ.get("GIT_SSH", 'ssh')
+        # force use of git_ssh_opts via wrapper
+        wrapper = write_ssh_wrapper(module)
+        os.environ["GIT_SSH"] = wrapper
 
         # same as above but older git uses git_ssh_command
-        os.environ["GIT_SSH_COMMAND"] = '%s $GIT_SSH_OPTS' % os.environ.get("GIT_SSH_COMMAND", 'ssh')
+        os.environ["GIT_SSH_COMMAND"] = wrapper
 
 
 def get_version(module, git_path, dest, ref="HEAD"):
@@ -1189,7 +1224,7 @@ def main():
     git_version_used = git_version(git_path, module)
 
     # GIT_SSH=<path> as an environment variable
-    set_git_ssh_env(key_file, ssh_opts, git_version_used)
+    set_git_ssh_env(key_file, ssh_opts, git_version_used, module)
 
     if depth is not None and git_version_used < LooseVersion('1.9.1'):
         module.warn("git version is too old to fully support the depth argument. Falling back to full checkouts.")
