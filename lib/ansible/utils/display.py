@@ -253,8 +253,8 @@ class Display(with_metaclass(Singleton, object)):
         """
 
         if current_process().name != 'MainProcess':
-            print('yolo', os.getpid(), os.getppid())
-            #return queue.msg(msg, color=color, stderr=stderr, screen_only=screen_only, log_only=log_only, newline=newline)
+            print('me', os.getpid(), 'parent', os.getppid())
+            #return queue.send_display(msg, color=color, stderr=stderr, screen_only=screen_only, log_only=log_only, newline=newline)
             pass
 
         nocolor = msg
