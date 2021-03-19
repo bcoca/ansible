@@ -31,12 +31,13 @@ import sys
 import textwrap
 import time
 
+from multiprocessing import current_process
 from struct import unpack, pack
 from termios import TIOCGWINSZ
 
 from ansible import constants as C
 from ansible.errors import AnsibleError, AnsibleAssertionError
-from ansible.module_utils._text import to_bytes, to_text, to_native
+from ansible.module_utils._text import to_bytes, to_text
 from ansible.module_utils.six import with_metaclass, text_type
 from ansible.utils.color import stringc
 from ansible.utils.singleton import Singleton
@@ -250,6 +251,11 @@ class Display(with_metaclass(Singleton, object)):
 
         Note: msg *must* be a unicode string to prevent UnicodeError tracebacks.
         """
+
+        if current_process().name != 'MainProcess':
+            print('yolo', os.getpid(), os.getppid())
+            #return queue.msg(msg, color=color, stderr=stderr, screen_only=screen_only, log_only=log_only, newline=newline)
+            pass
 
         nocolor = msg
 
