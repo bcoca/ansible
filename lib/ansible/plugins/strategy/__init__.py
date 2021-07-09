@@ -30,7 +30,6 @@ import traceback
 
 from collections import deque
 from multiprocessing import Lock
-from queue import Queue
 
 from jinja2.exceptions import UndefinedError
 
@@ -41,9 +40,9 @@ from ansible.executor import action_write_locks
 from ansible.executor.play_iterator import IteratingStates, FailedStates
 from ansible.executor.process.worker import WorkerProcess
 from ansible.executor.task_result import TaskResult
-from ansible.executor.task_queue_manager import CallbackSend
 from ansible.module_utils.six import string_types
-from ansible.module_utils._text import to_text, to_native
+from ansible.module_utils.six.moves import queue as Queue
+from ansible.module_utils._text import to_text
 from ansible.module_utils.connection import Connection, ConnectionError
 from ansible.playbook.conditional import Conditional
 from ansible.playbook.handler import Handler
@@ -51,7 +50,7 @@ from ansible.playbook.helpers import load_list_of_blocks
 from ansible.playbook.included_file import IncludedFile
 from ansible.playbook.task import Task
 from ansible.playbook.task_include import TaskInclude
-from ansible.plugins import loader as plugin_loader
+from ansible.plugins import AnsiblePlugin, loader as plugin_loader
 from ansible.template import Templar
 from ansible.utils.display import Display
 from ansible.utils.fqcn import add_internal_fqcns
@@ -111,6 +110,10 @@ def _get_item_vars(result, task):
 
 
 def results_thread_main(strategy):
+
+    # avoid circularity
+    from ansible.executor.task_queue_manager import CallbackSend
+
     while True:
         try:
             result = strategy._final_q.get()
@@ -207,7 +210,7 @@ def debug_closure(func):
     return inner
 
 
-class StrategyBase:
+class StrategyBase(AnsiblePlugin):
 
     '''
     This is the base class for strategy plugins, which contains some common
@@ -219,13 +222,18 @@ class StrategyBase:
     # the throttling internally (as `free` does)
     ALLOW_BASE_THROTTLING = True
 
-    def __init__(self, tqm):
-        self._tqm = tqm
-        self._inventory = tqm.get_inventory()
-        self._workers = tqm._workers
-        self._variable_manager = tqm.get_variable_manager()
-        self._loader = tqm.get_loader()
-        self._final_q = tqm._final_q
+    def __init__(self, tqm=None):
+
+        # setup results handling
+        self._results_thread = threading.Thread(target=results_thread_main, args=(self,))
+        self._results = deque()
+        self._handler_results = deque()
+        self._results_lock = threading.Condition(threading.Lock())
+
+        if tqm is not None:
+            self.set_tqm(tqm)
+            self._initialise_results_thread()
+
         self._step = context.CLIARGS.get('step', False)
         self._diff = context.CLIARGS.get('diff', False)
 
@@ -250,15 +258,6 @@ class StrategyBase:
         # flushed handlers
         self._flushed_hosts = dict()
 
-        self._results = deque()
-        self._handler_results = deque()
-        self._results_lock = threading.Condition(threading.Lock())
-
-        # create the result processing thread for reading results in the background
-        self._results_thread = threading.Thread(target=results_thread_main, args=(self,))
-        self._results_thread.daemon = True
-        self._results_thread.start()
-
         # holds the list of active (persistent) connections to be shutdown at
         # play completion
         self._active_connections = dict()
@@ -270,6 +269,22 @@ class StrategyBase:
         self._hosts_cache_all = []
 
         self.debugger_active = C.ENABLE_TASK_DEBUGGER
+
+    def set_tqm(self, tqm):
+        self._tqm = tqm
+        self._tqm = tqm
+        self._inventory = tqm.get_inventory()
+        self._workers = tqm._workers
+        self._variable_manager = tqm.get_variable_manager()
+        self._loader = tqm.get_loader()
+        self._final_q = tqm._final_q
+
+    def _initialise_results_thread(self):
+
+        # create the result processing thread for reading results in the background
+        self._results_thread = threading.Thread(target=results_thread_main, args=(self,))
+        self._results_thread.daemon = True
+        self._results_thread.start()
 
     def _set_hosts_cache(self, play, refresh=True):
         """Responsible for setting _hosts_cache and _hosts_cache_all

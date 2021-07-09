@@ -36,7 +36,7 @@ from ansible.module_utils.six import string_types
 from ansible.module_utils._text import to_text, to_native
 from ansible.playbook.play_context import PlayContext
 from ansible.playbook.task import Task
-from ansible.plugins.loader import callback_loader, strategy_loader, module_loader
+from ansible.plugins.loader import callback_loader, module_loader
 from ansible.plugins.callback import CallbackBase
 from ansible.template import Templar
 from ansible.vars.hostvars import HostVars
@@ -93,7 +93,7 @@ class TaskQueueManager:
     manager object with shared datastructures/queues for coordinating
     work between all processes.
 
-    The queue manager is responsible for loading the play strategy plugin,
+    The play is responsible for loading the strategy plugin,
     which dispatches the Play's tasks to hosts.
     '''
 
@@ -292,11 +292,7 @@ class TaskQueueManager:
 
         # adjust to # of workers to configured forks or size of batch, whatever is lower
         self._initialize_processes(min(self._forks, iterator.batch_size))
-
-        # load the specified strategy (or the default linear one)
-        strategy = strategy_loader.get(new_play.strategy, self)
-        if strategy is None:
-            raise AnsibleError("Invalid play strategy specified: %s" % new_play.strategy, obj=play._ds)
+        new_play.strategy.set_tqm(self)
 
         # Because the TQM may survive multiple play runs, we start by marking
         # any hosts as failed in the iterator here which may have been marked
@@ -318,9 +314,9 @@ class TaskQueueManager:
 
         # and run the play using the strategy and cleanup on way out
         try:
-            play_return = strategy.run(iterator, play_context)
+            play_return = new_play.strategy.run(iterator, play_context)
         finally:
-            strategy.cleanup()
+            new_play.strategy.cleanup()
             self._cleanup_processes()
 
         # now re-save the hosts that failed from the iterator to our internal list

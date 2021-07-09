@@ -23,7 +23,7 @@ from ansible import constants as C
 from ansible import context
 from ansible.errors import AnsibleParserError, AnsibleAssertionError
 from ansible.module_utils._text import to_native
-from ansible.module_utils.common.collections import is_sequence
+from ansible.module_utils.common.collections import is_sequence, Mapping
 from ansible.module_utils.six import binary_type, string_types, text_type
 from ansible.playbook.attribute import FieldAttribute
 from ansible.playbook.base import Base
@@ -32,6 +32,8 @@ from ansible.playbook.collectionsearch import CollectionSearch
 from ansible.playbook.helpers import load_list_of_blocks, load_list_of_roles
 from ansible.playbook.role import Role
 from ansible.playbook.taggable import Taggable
+from ansible.plugins.loader import strategy_loader
+from ansible.plugins.strategy import StrategyBase
 from ansible.vars.manager import preprocess_vars
 from ansible.utils.display import Display
 
@@ -81,7 +83,7 @@ class Play(Base, Taggable, CollectionSearch):
     _force_handlers = FieldAttribute(isa='bool', default=context.cliargs_deferred_get('force_handlers'), always_post_validate=True)
     _max_fail_percentage = FieldAttribute(isa='percent', always_post_validate=True)
     _serial = FieldAttribute(isa='list', default=list, always_post_validate=True)
-    _strategy = FieldAttribute(isa='string', default=C.DEFAULT_STRATEGY, always_post_validate=True)
+    _strategy = FieldAttribute(isa='class', default={"name": C.DEFAULT_STRATEGY}, class_type=StrategyBase, inherit=False)
     _order = FieldAttribute(isa='string', always_post_validate=True)
 
     # =================================================================================
@@ -228,6 +230,21 @@ class Play(Base, Taggable, CollectionSearch):
         self.roles[:0] = roles
 
         return self.roles
+
+    def _load_strategy(self, attr, ds):
+
+        if isinstance(ds, string_types):
+            ds = {'name': ds}
+
+        sname = ds.pop('name')
+
+        strategy = strategy_loader.get(sname)
+        if strategy is None:
+            raise AnsibleParserError("Invalid play strategy specified: %s" % sname, obj=ds)
+
+        strategy.set_options(task_keys=ds)
+
+        return strategy
 
     def _load_vars_prompt(self, attr, ds):
         new_ds = preprocess_vars(ds)
