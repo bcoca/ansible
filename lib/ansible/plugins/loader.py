@@ -962,11 +962,14 @@ class PluginLoader:
                 self._module_cache[path] = module
                 found_in_cache = False
 
-            try:
-                obj = getattr(self._module_cache[path], self.class_name)
-            except AttributeError as e:
-                display.warning("Skipping plugin (%s) as it seems to be invalid: %s" % (path, to_text(e)))
-                continue
+            if self.class_name:
+                try:
+                    obj = getattr(self._module_cache[path], self.class_name)
+                except AttributeError as e:
+                    display.warning("Skipping plugin (%s) as it wont properly load: %s" % (path, to_text(e)))
+                    continue
+            else:
+                obj = self._module_cache[path]
 
             if self.base_class:
                 # The import path is hardcoded and should be the right place,

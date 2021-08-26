@@ -145,40 +145,11 @@ class ConsoleCLI(CLI, cmd.Cmd):
         self.prompt = stringc(prompt, color, wrap_nonvisible_chars=True)
 
     def list_modules(self):
-        modules = set()
         if context.CLIARGS['module_path']:
             for path in context.CLIARGS['module_path']:
                 if path:
                     module_loader.add_directory(path)
-
-        module_paths = module_loader._get_paths()
-        for path in module_paths:
-            if path is not None:
-                modules.update(self._find_modules_in_path(path))
-        return modules
-
-    def _find_modules_in_path(self, path):
-
-        if os.path.isdir(path):
-            for module in os.listdir(path):
-                if module.startswith('.'):
-                    continue
-                elif os.path.isdir(module):
-                    self._find_modules_in_path(module)
-                elif module.startswith('__'):
-                    continue
-                elif any(module.endswith(x) for x in C.REJECT_EXTS):
-                    continue
-                elif module in C.IGNORE_FILES:
-                    continue
-                elif module.startswith('_'):
-                    fullpath = '/'.join([path, module])
-                    if os.path.islink(fullpath):  # avoids aliases
-                        continue
-                    module = module.replace('_', '', 1)
-
-                module = os.path.splitext(module)[0]  # removes the extension
-                yield module
+        return [m._load_name for m in module_loader.all(class_only=True)]
 
     def default(self, arg, forceshell=False):
         """ actually runs modules """
@@ -464,6 +435,7 @@ class ConsoleCLI(CLI, cmd.Cmd):
 
         # dynamically add modules as commands
         self.modules = self.list_modules()
+        print(self.modules)
         for module in self.modules:
             setattr(self, 'do_' + module, lambda arg, module=module: self.default(module + ' ' + arg))
             setattr(self, 'help_' + module, lambda module=module: self.helpdefault(module))
