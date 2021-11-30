@@ -707,6 +707,9 @@ class TaskExecutor:
                     result['%s_when_result' % condname] = to_text(e)
 
             if retries > 1:
+                # dont evaluate until if in check mode and task skipped due to that
+                if self._task.check_mode and result.get('skipped', False) and 'check mode' in result.get('msg', ''):
+                    break
                 cond = Conditional(loader=self._loader)
                 cond.when = self._task.until
                 if cond.evaluate_conditional(templar, vars_copy):
