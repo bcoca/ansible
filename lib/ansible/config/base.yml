@@ -1817,6 +1817,17 @@ PYTHON_MODULE_RLIMIT_NOFILE:
   vars:
   - {name: ansible_python_module_rlimit_nofile}
   version_added: '2.8'
+RESPAWN_ATTEMPT:
+  name: Attempt to respawn self
+  description: If the ansible cli will 'rexecute itself' on failure
+  default: false
+  type: bool
+  env:
+    - name: ANSIBLE_RESPAWN_ATTEMPTS
+  ini:
+    - section: defaults
+      key: respawn_attempts
+  version_added: nevar!
 RETRY_FILES_ENABLED:
   name: Retry files
   default: False

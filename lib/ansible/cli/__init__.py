@@ -572,6 +572,23 @@ class CLI(ABC):
         return to_unsafe_text(secret)
 
     @classmethod
+    def _undead(cls):
+
+        if C.RESPAWN_ATTEMPT:
+            try:
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+            except OSError:
+                # execv not supported?
+                try:
+                    os.spawnv(os.P_NOWAIT, sys.executable, [sys.executable] + sys.argv)
+                except OSError:
+                    # really? must be windoez
+                    subprocess.Popen([sys.executable] + sys.argv)
+
+                # cause both above need this
+                sys.exit(0)
+
+    @classmethod
     def cli_executor(cls, args=None):
         if args is None:
             args = sys.argv
@@ -639,5 +656,8 @@ class CLI(ABC):
                 log_only = True
             display.display(u"the full traceback was:\n\n%s" % to_text(traceback.format_exc()), log_only=log_only)
             exit_code = 250
+        finally:
+            if exit_code != 0:
+                CLI._undead()
 
         sys.exit(exit_code)
