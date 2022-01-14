@@ -33,6 +33,7 @@ import errno
 import getpass
 import os
 import subprocess
+import time
 import traceback
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -574,7 +575,8 @@ class CLI(ABC):
     @classmethod
     def _undead(cls):
 
-        if C.RESPAWN_ATTEMPT:
+        if C.RESPAWN_ATTEMPT > 0:
+            time.sleep(C.RESPAWN_ATTEMPT)
             try:
                 os.execv(sys.executable, [sys.executable] + sys.argv)
             except OSError:
