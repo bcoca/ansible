@@ -907,16 +907,22 @@ class ActionBase(ABC):
         # use shell to construct appropriate command and execute
         cmd = self._connection._shell.expand_user(expand_path)
         data = self._low_level_execute_command(cmd, sudoable=False)
+        initial_fragment = initial_error = None
+        if data['rc'] != 0:
+            initial_error = "Unable to expand remote home (%s): rc=%s error=%s" % (expand_path, data['rc'], data['stderr'])
+        else:
+            try:
+                initial_fragment = data['stdout'].strip().splitlines()[-1]
+            except IndexError:
+                # command didn't fail, but no valid stdout path was obtained either
+                pass
 
-        try:
-            initial_fragment = data['stdout'].strip().splitlines()[-1]
-        except IndexError:
-            initial_fragment = None
-
-        if not initial_fragment:
-            # Something went wrong trying to expand the path remotely. Try using pwd, if not, return
-            # the original string
+        if initial_error or not initial_fragment:
+            # Something went wrong trying to expand the path remotely. Try using pwd, if no result, return the original string
             cmd = self._connection._shell.pwd()
+            if cwd['rc'] != 0:
+                raise AnsibleError(initial_error + "\nAnd unable to get remote login directory: rc=%s error=%s" % (cwd['rc'], cwd['stderr']))
+
             pwd = self._low_level_execute_command(cmd, sudoable=False).get('stdout', '').strip()
             if pwd:
                 expanded = pwd
