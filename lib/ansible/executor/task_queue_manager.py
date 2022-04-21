@@ -314,9 +314,9 @@ class TaskQueueManager:
 
         # and run the play using the strategy and cleanup on way out
         try:
-            play_return = new_play.strategy.run(iterator, play_context)
+            play_return = new_play.strategy_plugin.run(iterator, play_context)
         finally:
-            new_play.strategy.cleanup()
+            new_play.strategy_plugin.cleanup()
             self._cleanup_processes()
 
         # now re-save the hosts that failed from the iterator to our internal list

@@ -301,9 +301,11 @@ class StrategyBase(AnsiblePlugin):
         self._hosts_cache = [h.name for h in self._inventory.get_hosts(play.hosts, order=play.order)]
 
     def cleanup(self):
+        display.debug("RUNNING STRATEGY CLEANUP")
         # close active persistent connections
         for sock in self._active_connections.values():
             try:
+                display.debug("resetting %s" % sock)
                 conn = Connection(sock)
                 conn.reset()
             except ConnectionError as e:

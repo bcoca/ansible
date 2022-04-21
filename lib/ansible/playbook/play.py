@@ -102,6 +102,8 @@ class Play(Base, Taggable, CollectionSearch):
         self._action_groups = {}
         self._group_actions = {}
 
+        self.strategy_plugin = None
+
     def __repr__(self):
         return self.get_name()
 
@@ -231,20 +233,36 @@ class Play(Base, Taggable, CollectionSearch):
 
         return self.roles
 
+    def post_validate(self, templar):
+
+        super(Play, self).post_validate(templar)
+        if self.strategy_plugin is None:
+            self._initialize_strategy_plugin()
+
+    def _initialize_strategy_plugin(self):
+
+        if not self.strategy:
+            # TODO: find out why _load is not happening first
+            self.strategy = {"name": C.DEFAULT_STRATEGY}
+        try:
+            # load plugin
+            self.strategy_plugin = strategy_loader.get(self.strategy.get('name'))
+
+            if self.strategy_plugin is None:
+                raise AnsibleParserError("Invalid play strategy specified: %s" % self.strategy.get('name'))
+
+            # configure plugin
+            self.strategy_plugin.set_options(task_keys=self.strategy, var_options=self.vars)
+        except Exception as e:
+            raise
+            raise AnsibleParserError('Invalid strategy supplied (%s) could not load plugin: %s' % (self.strategy, to_native(e)), orig_exc=e)
+
     def _load_strategy(self, attr, ds):
 
         if not ds:
             ds = {'name': C.DEFAULT_STRATEGY}
         elif isinstance(ds, string_types):
             ds = {'name': ds}
-
-        sname = ds.pop('name')
-
-        self.strategy_plugin = strategy_loader.get(sname)
-        if self.strategy_plugin is None:
-            raise AnsibleParserError("Invalid play strategy specified: %s" % sname, obj=ds)
-
-        strategy.set_options(task_keys=ds)
 
         return strategy
 
@@ -392,4 +410,5 @@ class Play(Base, Taggable, CollectionSearch):
         new_me._included_path = self._included_path
         new_me._action_groups = self._action_groups
         new_me._group_actions = self._group_actions
+        new_me._initialize_strategy_plugin()
         return new_me
