@@ -292,7 +292,7 @@ class TaskQueueManager:
 
         # adjust to # of workers to configured forks or size of batch, whatever is lower
         self._initialize_processes(min(self._forks, iterator.batch_size))
-        new_play.strategy.set_tqm(self)
+        new_play.strategy_plugin.set_tqm(self)
 
         # Because the TQM may survive multiple play runs, we start by marking
         # any hosts as failed in the iterator here which may have been marked

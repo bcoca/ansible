@@ -37,7 +37,6 @@ from ansible import constants as C
 from ansible import context
 from ansible.errors import AnsibleError, AnsibleFileNotFound, AnsibleUndefinedVariable, AnsibleParserError
 from ansible.executor import action_write_locks
-from ansible.executor.play_iterator import IteratingStates, FailedStates
 from ansible.executor.process.worker import WorkerProcess
 from ansible.executor.task_result import TaskResult
 from ansible.module_utils.six import string_types
@@ -1194,6 +1193,9 @@ class StrategyBase(AnsiblePlugin):
         display.warning("%s task does not support when conditional" % task_name)
 
     def _execute_meta(self, task, play_context, iterator, target_host):
+
+        # circular
+        from ansible.executor.play_iterator import IteratingStates, FailedStates
 
         # meta tasks store their args in the _raw_params field of args,
         # since they do not use k=v pairs, so get that

@@ -33,7 +33,6 @@ from ansible.playbook.helpers import load_list_of_blocks, load_list_of_roles
 from ansible.playbook.role import Role
 from ansible.playbook.taggable import Taggable
 from ansible.plugins.loader import strategy_loader
-from ansible.plugins.strategy import StrategyBase
 from ansible.vars.manager import preprocess_vars
 from ansible.utils.display import Display
 
@@ -83,7 +82,8 @@ class Play(Base, Taggable, CollectionSearch):
     _force_handlers = FieldAttribute(isa='bool', default=context.cliargs_deferred_get('force_handlers'), always_post_validate=True)
     _max_fail_percentage = FieldAttribute(isa='percent', always_post_validate=True)
     _serial = FieldAttribute(isa='list', default=list, always_post_validate=True)
-    _strategy = FieldAttribute(isa='class', default={"name": C.DEFAULT_STRATEGY}, class_type=StrategyBase, inherit=False)
+    #_strategy = FieldAttribute(isa='class', default={"name": C.DEFAULT_STRATEGY}, class_type='StrategyModule', inherit=False, always_post_validate=True)
+    _strategy = FieldAttribute(isa='dict', default=dict, inherit=False, always_post_validate=True)
     _order = FieldAttribute(isa='string', always_post_validate=True)
 
     # =================================================================================
@@ -233,13 +233,15 @@ class Play(Base, Taggable, CollectionSearch):
 
     def _load_strategy(self, attr, ds):
 
-        if isinstance(ds, string_types):
+        if not ds:
+            ds = {'name': C.DEFAULT_STRATEGY}
+        elif isinstance(ds, string_types):
             ds = {'name': ds}
 
         sname = ds.pop('name')
 
-        strategy = strategy_loader.get(sname)
-        if strategy is None:
+        self.strategy_plugin = strategy_loader.get(sname)
+        if self.strategy_plugin is None:
             raise AnsibleParserError("Invalid play strategy specified: %s" % sname, obj=ds)
 
         strategy.set_options(task_keys=ds)
