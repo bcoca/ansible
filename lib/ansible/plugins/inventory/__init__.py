@@ -454,7 +454,8 @@ class Constructable(object):
                             gname = self._sanitize_group_name('%s%s%s' % (prefix, sep, bare_name))
                             result_gname = self.inventory.add_group(gname)
                             if group_priority is not None:
-                                result_gname.set_priority(group_priority)
+                                result_group = self.inventory.groups.get(result_gname)
+                                result_group.set_priority(group_priority)
 
                             self.inventory.add_host(host, result_gname)
 
