@@ -448,7 +448,7 @@ class Constructable(object):
                             gname = self._sanitize_group_name('%s%s%s' % (prefix, sep, bare_name))
                             result_gname = self.inventory.add_group(gname)
                             # Add `ansible_keyed_group_name` to the variables that we can use to template
-                            templar_variables = combine_vars({'ansible_keyed_group_name': result_gname}, variables)
+                            templar_variables = combine_vars(variables, {'ansible_keyed_group_name': result_gname})
                             self.templar.available_variables = templar_variables
                             # Template the group_priority. There are not many variables available at this point,
                             # But what we have should be able to be used here.
