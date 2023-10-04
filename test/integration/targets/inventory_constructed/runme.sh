@@ -73,6 +73,8 @@ grep '"override_priority_1": "c_static_group_priority_1"' out.txt
 # of 2, which should override c_static_group_priority_1. This means that the value from b_keyed_group_priority_2 should return.
 grep '"override_priority_2": "b_keyed_group_priority_2"' out.txt
 # override_priority_3 is set in all the groups, which means the group with the highest priority set should win.
-# Lexicographically, this would otherwise be 2_static_group_priority_1. However, since we set the priority of
+# Lexicographically, this would otherwise be c_static_group_priority_1. However, since we set the priority of
 # a_keyed_group_priority_3 to 3, we will expect it to override the other two groups, and return its variable.
+# Note that a_keyed_group_priority_3 has its priority set with a conditional, so here we are testing our ability
+# to set this priority with a variable, including the `ansible_keyed_group_name` variable that we expose.
 grep '"override_priority_3": "a_keyed_group_priority_3"' out.txt
