@@ -447,6 +447,8 @@ class Constructable(object):
                                 sep = ''
                             gname = self._sanitize_group_name('%s%s%s' % (prefix, sep, bare_name))
                             result_gname = self.inventory.add_group(gname)
+                            self.inventory.add_host(host, result_gname)
+
                             # Add `ansible_keyed_group_name` to the variables that we can use to template
                             templar_variables = combine_vars(variables, {'ansible_keyed_group_name': result_gname})
                             self.templar.available_variables = templar_variables
@@ -459,8 +461,6 @@ class Constructable(object):
                                     result_group.set_priority(int(group_priority))
                                 except ValueError as e:
                                     raise AnsibleParserError("Invalid group priority given: %s" % to_native(e))
-
-                            self.inventory.add_host(host, result_gname)
 
                             if raw_parent_name:
                                 parent_name = self._sanitize_group_name(raw_parent_name)
