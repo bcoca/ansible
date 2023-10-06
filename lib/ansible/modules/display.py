@@ -69,7 +69,7 @@ author:
 
 EXAMPLES = r'''
 - name: Print the gateway for each host when defined
-  ansible.builtin.debug:
+  ansible.builtin.display:
     msg: System {{ inventory_hostname }} has gateway {{ ansible_default_ipv4.gateway }}
   when: ansible_default_ipv4.gateway is defined
 
@@ -77,19 +77,19 @@ EXAMPLES = r'''
   ansible.builtin.shell: /usr/bin/uptime
   register: result
 
-- name: Print return information from the previous task
-  ansible.builtin.debug:
-    var: result
-    verbosity: 2
+- name: Print return information from the previous task, if very verbose
+  ansible.builtin.display:
+    msg: '{{result}}'
+  when: ansible_verbosity >= 2
 
-- name: Display all variables/facts known for a host
-  ansible.builtin.debug:
-    var: hostvars[inventory_hostname]
-    verbosity: 4
+- name: Display all variables/facts known for a host, if very very very verbose
+  ansible.builtin.display:
+    msg: '{{hostvars[inventory_hostname]}}'
+  when: ansible_verbosity >= 4
 
-- name: Prints two lines of messages, but only if there is an environment value set
-  ansible.builtin.debug:
-    msg:
-    - "Provisioning based on YOUR_KEY which is: {{ lookup('ansible.builtin.env', 'YOUR_KEY') }}"
-    - "These servers were built using the password of '{{ password_used }}'. Please retain this for later use."
+- name: Assert a value is what we expect
+  ansible.builtin.display:
+      msg: "'X': {{x|default('UNDEFINED')}}.  'X' is {{(x|default(None) in [1,2,3])|ternary('','not')}} in the array"
+    failed_when:
+      - x is not defined or x not in [1,2,3]
 '''
