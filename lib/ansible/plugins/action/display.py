@@ -14,8 +14,8 @@ class ActionModule(ActionBase):
     ''' Print statements during execution '''
 
     TRANSFERS_FILES = False
-    _VALID_ARGS = frozenset(('msg', 'channel'))
-    _VALID_CHANNELS = frozenset(('deprecated', 'warning', 'display', 'v', 'vv', 'vvv', 'vvvv', 'vvvvv', 'vvvvvv'))
+    _VALID_ARGS = frozenset(('msg', 'channel', 'color'))
+    _VALID_CHANNELS = frozenset(('deprecated', 'warning', 'display', 'verbose', 'error', 'callback'))
 
     def run(self, tmp=None, task_vars=None):
 
@@ -25,16 +25,22 @@ class ActionModule(ActionBase):
             except KeyError:
                 raise AnsibleActionFail("The required field 'msg' is missing")
 
-            channel = self._task.args.get('channel', 'display')
+            channel = self._task.args.get('channel', 'callback')
 
             if channel not in self._VALID_CHANNELS:
                 raise AnsibleActionFail("Invalid channel '%s', valid values are: %s " % (channel, ', '.join(self._VALID_CHANNELS)))
 
             result = super(ActionModule, self).run(tmp, task_vars)
 
-            call = getattr(display, channel)
-            call(to_text(msg, errors='surrogate_or_strict'))
+            if channel != 'callback':
+                call = getattr(display, channel)
+                call(to_text(msg, errors='surrogate_or_strict'))
+            else:
+                result['msg'] = msg
 
+            #result['_ansible_verbose_override'] = True
+            result['_ansible_always_verbose'] = True
+            result['_ansible_display_fields'] = ['mg']
             result['failed'] = False
         except TypeError:
             raise AnsibleActionFail("The required field 'msg' is missing")
