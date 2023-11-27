@@ -1483,7 +1483,7 @@ class AnsibleModule(object):
         # TODO: once python version on target high enough, dict comprh
         preserved = {}
         for k, v in kwargs.items():
-            if v is None or isinstance(v, bool):
+            if v is None or type(v) is bool:
                 preserved[k] = v
 
         # strip no_log collisions
