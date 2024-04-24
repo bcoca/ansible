@@ -18,8 +18,11 @@ from __future__ import annotations
 
 import os
 import shutil
+import tempfile
+import typing as t
 
 from errno import EEXIST
+
 from ansible.errors import AnsibleError
 from ansible.module_utils.common.text.converters import to_bytes, to_native, to_text
 
@@ -158,3 +161,24 @@ def is_subpath(child, parent, real=False):
         pass
 
     return test
+
+def write_to_secure_tempfile(content: str | bytes) -> int:
+    """
+    Returns a file descriptor to a deleted tempfile to which the content was written.
+    This writes the content as securely as possible and ensures its only accessible via the descriptor.
+    :arg: content: Content to store in tempfile
+    :raises: Any exception from either conversion to bytes or any issue with creating/opening/writing to the file
+    """
+    fd, tempfile_name = tempfile.mkstemp(dir=C.DEFAULT_LOCAL_TMP)
+    f = os.fdopen(fd, 'wb')
+    try:
+        f.write(to_bytes(content))
+    except Exception:
+        # close file to remove the reference
+        f.close()
+        raise
+    finally:
+        # always remove the path, file would only be available by ref
+        os.remove(tempfile_name)
+
+    return fd
