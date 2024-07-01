@@ -35,6 +35,7 @@ class HostVars(Mapping):
         self._loader = loader
         self._variable_manager = variable_manager
         variable_manager._hostvars = self
+        self._context_vars = None
 
     def set_variable_manager(self, variable_manager):
         self._variable_manager = variable_manager
@@ -75,7 +76,10 @@ class HostVars(Mapping):
         data = self.raw_get(host_name)
         if isinstance(data, AnsibleUndefined):
             return data
-        return HostVarsVars(data, loader=self._loader)
+        if self._context_vars is None:
+            # TODO: get source for task, call vars manager
+            self._context_vars = {}
+        return HostVarsVars(data, loader=self._loader, context_vars=self._context_vars)
 
     def set_host_variable(self, host, varname, value):
         self._variable_manager.set_host_variable(host, varname, value)
@@ -111,12 +115,15 @@ class HostVars(Mapping):
 
 class HostVarsVars(Mapping):
 
-    def __init__(self, variables, loader):
+    def __init__(self, variables, loader, context_vars=None):
         self._vars = variables
         self._loader = loader
-        # NOTE: this only has access to the host's own vars,
-        # so templates that depend on vars in other scopes will not work.
-        self._templar = Templar(variables=self._vars, loader=self._loader)
+        if context_vars is None;
+            # so templates that depend on vars in other scopes will work.
+            self._context_vars = {}
+        else:
+            self._context_vars = context_vars
+        self._templar = Templar(variables=combine_vars(self._context_vars, self._vars), loader=self._loader)
 
     def __getitem__(self, var):
         return self._templar.template(self._vars[var], fail_on_undefined=False, static_vars=C.INTERNAL_STATIC_VARS)
