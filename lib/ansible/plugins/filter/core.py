@@ -17,7 +17,7 @@ import uuid
 import yaml
 import datetime
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Set
 from functools import partial
 from random import Random, SystemRandom, shuffle
 
@@ -34,8 +34,12 @@ from ansible.template import recursive_check_defined
 from ansible.utils.display import Display
 from ansible.utils.encrypt import do_encrypt, PASSLIB_AVAILABLE
 from ansible.utils.hashing import md5s, checksum_s
+from ansible.utils.native_jinja import NativeJinjaText
 from ansible.utils.unicode import unicode_wrap
+from ansible.utils.unsafe_proxy import wrap_var, AnsibleUnsafeBytes, AnsibleUnsafeText, NativeJinjaUnsafeText, AnsibleUnsafe
 from ansible.utils.vars import merge_hash
+
+
 
 display = Display()
 
@@ -599,6 +603,46 @@ def commonpath(paths):
     return os.path.commonpath(paths)
 
 
+def ununsafeify(v):
+    """ unwrap unsafedness """
+
+    def _unwrap_dict(d):
+        return dict((ununsafeify(k), ununsafeify(item)) for k, item in v.items())
+
+    def _unwrap_sequence(v):
+        sequence_type = type(v)
+        return sequence_type(ununsafeify(item) for item in v)
+
+    def _unbyte(v):
+        return bytes(v)
+
+    def _untext(v):
+        return str(v)
+
+    def _unninja(v):
+        return NativeJinjaText(v)
+
+    if v is not None:
+        if isinstance(v, AnsibleUnsafeBytes):
+            v = _unbyte(v)
+        elif isinstance(v, AnsibleUnsafeText):
+            v = _untext(v)
+        elif isinstance(v, NativeJinjaUnsafeText):
+            v = _unninja(v)
+        if isinstance(v, Mapping):
+            v = _unwrap_dict(v)
+        elif is_sequence(v):
+            v = _unwrap_sequence(v)
+        elif isinstance(v, AnsibleUnsafe):
+            raise AnsibleFilterError("Unkown unsafe type: {type(v)}")
+    return v
+
+
+def make_unsafe(variable):
+    """ wrap in unsafedness """
+    return wrap_var(variable)
+
+
 class FilterModule(object):
     ''' Ansible core jinja2 filters '''
 
@@ -676,6 +720,10 @@ class FilterModule(object):
 
             # undefined
             'mandatory': mandatory,
+
+            # security
+            'ununsafeify': ununsafeify,
+            'unsafe': make_unsafe,
 
             # comment-style decoration
             'comment': comment,
