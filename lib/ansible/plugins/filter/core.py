@@ -1,4 +1,4 @@
-# (c) 2012, Jeroen Hoekx <jeroen@hoekx.be>
+# (c) The Ansible Project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import annotations
@@ -12,10 +12,8 @@ import os.path
 import re
 import shlex
 import sys
-import time
 import uuid
 import yaml
-import datetime
 
 from collections.abc import Mapping
 from functools import partial
@@ -89,24 +87,6 @@ def to_bool(a):
     if a in ('yes', 'on', '1', 'true', 1):
         return True
     return False
-
-
-def to_datetime(string, format="%Y-%m-%d %H:%M:%S"):
-    return datetime.datetime.strptime(string, format)
-
-
-def strftime(string_format, second=None, utc=False):
-    ''' return a date string using string. See https://docs.python.org/3/library/time.html#time.strftime for format '''
-    if utc:
-        timefn = time.gmtime
-    else:
-        timefn = time.localtime
-    if second is not None:
-        try:
-            second = float(second)
-        except Exception:
-            raise AnsibleFilterError('Invalid value for epoch value (%s)' % second)
-    return time.strftime(string_format, timefn(second))
 
 
 def quote(a):
@@ -642,10 +622,6 @@ class FilterModule(object):
 
             # types
             'bool': to_bool,
-            'to_datetime': to_datetime,
-
-            # date formatting
-            'strftime': strftime,
 
             # quote string for shell usage
             'quote': quote,
