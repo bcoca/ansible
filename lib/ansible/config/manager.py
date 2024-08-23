@@ -169,7 +169,7 @@ def _ensure_type(value: object, value_type: str | None, origin: str | None = Non
             if value == "None":
                 return None
 
-        case 'path':
+        case 'path' | 'filepath':
             if isinstance(value, str):
                 return resolve_path(value, basedir=basedir)
 
