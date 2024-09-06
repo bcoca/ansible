@@ -227,24 +227,6 @@ class VariableManager:
             all_group = self._inventory.groups.get('all')
             host_groups = sort_groups([g for g in host.get_groups() if g.name not in ['all']])
 
-            def _get_plugin_vars(plugin, path, entities):
-                data = {}
-                try:
-                    data = plugin.get_vars(self._loader, path, entities)
-                except AttributeError:
-                    try:
-                        for entity in entities:
-                            if isinstance(entity, Host):
-                                data |= plugin.get_host_vars(entity.name)
-                            else:
-                                data |= plugin.get_group_vars(entity.name)
-                    except AttributeError:
-                        if hasattr(plugin, 'run'):
-                            raise AnsibleError("Cannot use v1 type vars plugin %s from %s" % (plugin._load_name, plugin._original_path))
-                        else:
-                            raise AnsibleError("Invalid vars plugin %s from %s" % (plugin._load_name, plugin._original_path))
-                return data
-
             # internal functions that actually do the work
             def _plugins_inventory(entities):
                 ''' merges all entities by inventory source '''
@@ -285,13 +267,14 @@ class VariableManager:
                     This should be used instead, NOT in combination with the other groups_plugins* functions
                 '''
                 data = {}
+                gather = ((_plugins_inventory, "inventory"), (_plugins_play, "playbook"))
                 for group in host_groups:
-                    data[group] = _combine_and_track(data[group], _plugins_inventory(group), "inventory group_vars for '%s'" % group)
-                    data[group] = _combine_and_track(data[group], _plugins_play(group), "playbook group_vars for '%s'" % group)
+                    tag = " group vars for '{group!r}'"
+                    for func, msg in gather:
+                        data[group] = _combine_and_track(data[group], func(group), msg + tag)
                 return data
 
-            # Merge groups as per precedence config
-            # only allow to call the functions we want exposed
+            # Merge groups as per precedence config, only allow to call the functions we want exposed
             for entry in C.VARIABLE_PRECEDENCE:
                 if entry in self._ALLOWED:
                     display.debug('Calling %s to load vars for %s' % (entry, host.name))
@@ -300,9 +283,14 @@ class VariableManager:
                     display.warning('Ignoring unknown variable precedence entry: %s' % (entry))
 
             # host vars, from inventory, inventory adjacent and play adjacent via plugins
-            all_vars = _combine_and_track(all_vars, host.get_vars(), "host vars for '%s'" % host)
-            all_vars = _combine_and_track(all_vars, _plugins_inventory([host]), "inventory host_vars for '%s'" % host)
-            all_vars = _combine_and_track(all_vars, _plugins_play([host]), "playbook host_vars for '%s'" % host)
+            tag = f" for '{host!r}'"
+            gather = (
+                      (host.get_vars, [], "host vars"),
+                      (_plugins_inventory, [[host]], "inventory host_vars"),
+                      (_plugins_play, [[host]], "playbook host_vars"),
+                    )
+            for func, args, msg in gather:
+                all_vars = _combine_and_track(all_vars, func(*args), msg + tag)
 
             # finally, the facts caches for this host, if it exists
             # TODO: cleaning of facts should eventually become part of taskresults instead of vars

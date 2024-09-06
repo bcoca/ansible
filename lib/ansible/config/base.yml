@@ -2064,6 +2064,13 @@ VARIABLE_PRECEDENCE:
   - {key: precedence, section: defaults}
   type: list
   version_added: "2.4"
+  choices:
+    all_inventory: From the `all` group from invenotry
+    groups_inventory: From all groups except `all` from inventory, sorted by group precedence rules
+    all_plugins_inventory: From the vars plugins for the `all` group using the inventory as the base dir
+    all_plugins_play: From the vars plugins for the `all` group using the playbook as the base dir
+    groups_plugins_inventory: From the vars plugins for all groups except `all` using the inventory as the base dir
+    groups_plugins_play: From the vars plugins for all groups except `all` using the playbook as the base dir
 WIN_ASYNC_STARTUP_TIMEOUT:
   name: Windows Async Startup Timeout
   default: 5
