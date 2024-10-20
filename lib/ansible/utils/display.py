@@ -403,6 +403,7 @@ class Display(metaclass=Singleton):
         log_only: bool = False,
         newline: bool = True,
         caplevel: int | None = None,
+        data: dict | None = None,
     ) -> None:
         """ Display a message to the user
 
@@ -435,6 +436,9 @@ class Display(metaclass=Singleton):
             else:
                 fileobj = sys.stderr
 
+            if data:
+                msg2= msg2.format(data)
+
             with self._lock:
                 fileobj.write(msg2)
 
@@ -452,9 +456,9 @@ class Display(metaclass=Singleton):
             #         raise
 
         if logger and not screen_only:
-            self._log(nocolor, color, caplevel)
+            self._log(nocolor, color, caplevel, data)
 
-    def _log(self, msg: str, color: str | None = None, caplevel: int | None = None):
+    def _log(self, msg: str, color: str | None = None, caplevel: int | None = None, data: dict | None = None):
 
         if logger and (caplevel is None or self.log_verbosity > caplevel):
             msg2 = msg.lstrip('\n')
@@ -476,33 +480,36 @@ class Display(metaclass=Singleton):
                     # this should not happen if mapping is updated with new color configs, but JIC
                     raise AnsibleAssertionError('Invalid color supplied to display: %s' % color)
 
+            if data:
+                msg2 = msg2.format(data)
+
             # actually log
             logger.log(lvl, msg2)
 
-    def v(self, msg: str, host: str | None = None) -> None:
-        return self.verbose(msg, host=host, caplevel=0)
+    def v(self, msg: str, host: str | None = None, data: dict | None = None) -> None:
+        return self.verbose(msg, host=host, caplevel=0, data=data)
 
-    def vv(self, msg: str, host: str | None = None) -> None:
-        return self.verbose(msg, host=host, caplevel=1)
+    def vv(self, msg: str, host: str | None = None, data: dict | None = None) -> None:
+        return self.verbose(msg, host=host, caplevel=1, data=data)
 
-    def vvv(self, msg: str, host: str | None = None) -> None:
-        return self.verbose(msg, host=host, caplevel=2)
+    def vvv(self, msg: str, host: str | None = None, data: dict | None = None) -> None:
+        return self.verbose(msg, host=host, caplevel=2, data=data)
 
-    def vvvv(self, msg: str, host: str | None = None) -> None:
-        return self.verbose(msg, host=host, caplevel=3)
+    def vvvv(self, msg: str, host: str | None = None, data: dict | None = None) -> None:
+        return self.verbose(msg, host=host, caplevel=3, data=data)
 
-    def vvvvv(self, msg: str, host: str | None = None) -> None:
-        return self.verbose(msg, host=host, caplevel=4)
+    def vvvvv(self, msg: str, host: str | None = None, data: dict | None = None) -> None:
+        return self.verbose(msg, host=host, caplevel=4, data=data)
 
-    def vvvvvv(self, msg: str, host: str | None = None) -> None:
-        return self.verbose(msg, host=host, caplevel=5)
+    def vvvvvv(self, msg: str, host: str | None = None, data: dict | None = None) -> None:
+        return self.verbose(msg, host=host, caplevel=5 data=data)
 
-    def verbose(self, msg: str, host: str | None = None, caplevel: int = 2) -> None:
+    def verbose(self, msg: str, host: str | None = None, caplevel: int = 2,  data: dict | None = None) -> None:
         if self.verbosity > caplevel:
             self._verbose_display(msg, host=host, caplevel=caplevel)
 
         if self.log_verbosity > self.verbosity and self.log_verbosity > caplevel:
-            self._verbose_log(msg, host=host, caplevel=caplevel)
+            self._verbose_log(msg, host=host, caplevel=caplevel, data=data)
 
     @_proxy
     def _verbose_display(self, msg: str, host: str | None = None, caplevel: int = 2) -> None:
@@ -513,19 +520,20 @@ class Display(metaclass=Singleton):
             self.display("<%s> %s" % (host, msg), color=C.COLOR_VERBOSE, stderr=to_stderr)
 
     @_proxy
-    def _verbose_log(self, msg: str, host: str | None = None, caplevel: int = 2) -> None:
+    def _verbose_log(self, msg: str, host: str | None = None, caplevel: int = 2, data: dict | None = None) -> None:
         # we send to log if log was configured with higher verbosity
         if host is not None:
             msg = "<%s> %s" % (host, msg)
+
         self._log(msg, C.COLOR_VERBOSE, caplevel)
 
     @_meets_debug
     @_proxy
-    def debug(self, msg: str, host: str | None = None) -> None:
+    def debug(self, msg: str, host: str | None = None, data: dict | None = None) -> None:
         prefix = "%6d %0.5f" % (os.getpid(), time.time())
         if host is not None:
             prefix += f" [{host}]"
-        self.display(f"{prefix}: {msg}", color=C.COLOR_DEBUG, caplevel=-3)
+        self.display(f"{prefix}: {msg}", color=C.COLOR_DEBUG, caplevel=-3, data=data)
 
     def get_deprecation_message(
         self,
