@@ -403,7 +403,6 @@ class Display(metaclass=Singleton):
         log_only: bool = False,
         newline: bool = True,
         caplevel: int | None = None,
-        data: dict | None = None,
     ) -> None:
         """ Display a message to the user
 
@@ -413,10 +412,7 @@ class Display(metaclass=Singleton):
         if not isinstance(msg, str):
             raise TypeError(f'Display message must be str, not: {msg.__class__.__name__}')
 
-        if data:
-            nocolor= msg.format(**data)
-        else:
-            nocolor = msg
+        nocolor = msg
 
         if not log_only:
 
@@ -502,6 +498,10 @@ class Display(metaclass=Singleton):
         return self.verbose(msg, host=host, caplevel=5 data=data)
 
     def verbose(self, msg: str, host: str | None = None, caplevel: int = 2,  data: dict | None = None) -> None:
+
+        if data and self.verbosity > caplevel or self._log_verbosity > caplevel:
+            msg = msg.format(**data)
+
         if self.verbosity > caplevel:
             self._verbose_display(msg, host=host, caplevel=caplevel)
 
@@ -522,9 +522,6 @@ class Display(metaclass=Singleton):
         if host is not None:
             msg = f"<{host!r}> {msg}"
 
-        if data:
-            msg = msg.format(**data)
-
         self._log(msg, C.COLOR_VERBOSE, caplevel)
 
     @_meets_debug
@@ -533,7 +530,9 @@ class Display(metaclass=Singleton):
         prefix = "%6d %0.5f" % (os.getpid(), time.time())
         if host is not None:
             prefix += f" [{host}]"
-        self.display(f"{prefix}: {msg}", color=C.COLOR_DEBUG, caplevel=-3, data=data)
+        if data:
+            msg = msg.format(**data)
+        self.display(f"{prefix}: {msg}", color=C.COLOR_DEBUG, caplevel=-3)
 
     def get_deprecation_message(
         self,
