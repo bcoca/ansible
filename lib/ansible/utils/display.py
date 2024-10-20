@@ -414,7 +414,7 @@ class Display(metaclass=Singleton):
             raise TypeError(f'Display message must be str, not: {msg.__class__.__name__}')
 
         if data:
-            nocolor= msg.format(data)
+            nocolor= msg.format(**data)
         else:
             nocolor = msg
 
@@ -523,7 +523,7 @@ class Display(metaclass=Singleton):
             msg = f"<{host!r}> {msg}"
 
         if data:
-            msg = msg.format(data)
+            msg = msg.format(**data)
 
         self._log(msg, C.COLOR_VERBOSE, caplevel)
 
