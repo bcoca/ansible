@@ -413,7 +413,10 @@ class Display(metaclass=Singleton):
         if not isinstance(msg, str):
             raise TypeError(f'Display message must be str, not: {msg.__class__.__name__}')
 
-        nocolor = msg
+        if data:
+            nocolor= msg.format(data)
+        else:
+            nocolor = msg
 
         if not log_only:
 
@@ -436,9 +439,6 @@ class Display(metaclass=Singleton):
             else:
                 fileobj = sys.stderr
 
-            if data:
-                msg2= msg2.format(data)
-
             with self._lock:
                 fileobj.write(msg2)
 
@@ -458,7 +458,7 @@ class Display(metaclass=Singleton):
         if logger and not screen_only:
             self._log(nocolor, color, caplevel, data)
 
-    def _log(self, msg: str, color: str | None = None, caplevel: int | None = None, data: dict | None = None):
+    def _log(self, msg: str, color: str | None = None, caplevel: int | None = None):
 
         if logger and (caplevel is None or self.log_verbosity > caplevel):
             msg2 = msg.lstrip('\n')
@@ -479,9 +479,6 @@ class Display(metaclass=Singleton):
                 except KeyError:
                     # this should not happen if mapping is updated with new color configs, but JIC
                     raise AnsibleAssertionError('Invalid color supplied to display: %s' % color)
-
-            if data:
-                msg2 = msg2.format(data)
 
             # actually log
             logger.log(lvl, msg2)
@@ -523,7 +520,10 @@ class Display(metaclass=Singleton):
     def _verbose_log(self, msg: str, host: str | None = None, caplevel: int = 2, data: dict | None = None) -> None:
         # we send to log if log was configured with higher verbosity
         if host is not None:
-            msg = "<%s> %s" % (host, msg)
+            msg = f"<{host!r}> {msg}"
+
+        if data:
+            msg = msg.format(data)
 
         self._log(msg, C.COLOR_VERBOSE, caplevel)
 
