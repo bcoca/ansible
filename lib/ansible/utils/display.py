@@ -495,11 +495,11 @@ class Display(metaclass=Singleton):
         return self.verbose(msg, host=host, caplevel=4, data=data)
 
     def vvvvvv(self, msg: str, host: str | None = None, data: dict | None = None) -> None:
-        return self.verbose(msg, host=host, caplevel=5 data=data)
+        return self.verbose(msg, host=host, caplevel=5, data=data)
 
     def verbose(self, msg: str, host: str | None = None, caplevel: int = 2,  data: dict | None = None) -> None:
 
-        if data and self.verbosity > caplevel or self._log_verbosity > caplevel:
+        if data and self.verbosity > caplevel or self.log_verbosity > caplevel:
             msg = msg.format(**data)
 
         if self.verbosity > caplevel:
