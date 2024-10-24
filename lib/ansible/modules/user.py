@@ -151,12 +151,20 @@ options:
         type: bool
         default: no
         version_added: "0.9"
+        deprecated:
+            why: This is not flexible enough to meet all needs and adds a lot of complexity and attack surface to this action.
+            alternatives: Use the M(community.crypto.openssh_keypair) action.
+            removed_in: '2.22'
     ssh_key_bits:
         description:
             - Optionally specify number of bits in SSH key to create.
             - The default value depends on C(ssh-keygen).
         type: int
         version_added: "0.9"
+        deprecated:
+            why: This is not flexible enough to meet all needs and adds a lot of complexity and attack surface to this action.
+            alternatives: Use the M(community.crypto.openssh_keypair) action.
+            removed_in: '2.22'
     ssh_key_type:
         description:
             - Optionally specify the type of SSH key to generate.
@@ -165,6 +173,10 @@ options:
         type: str
         default: rsa
         version_added: "0.9"
+        deprecated:
+            why: This is not flexible enough to meet all needs and adds a lot of complexity and attack surface to this action.
+            alternatives: Use the M(community.crypto.openssh_keypair) action.
+            removed_in: '2.22'
     ssh_key_file:
         description:
             - Optionally specify the SSH key filename.
@@ -172,18 +184,30 @@ options:
             - This parameter defaults to V(.ssh/id_rsa).
         type: path
         version_added: "0.9"
+        deprecated:
+            why: This is not flexible enough to meet all needs and adds a lot of complexity and attack surface to this action.
+            alternatives: Use the M(community.crypto.openssh_keypair) action.
+            removed_in: '2.22'
     ssh_key_comment:
         description:
             - Optionally define the comment for the SSH key.
         type: str
         default: ansible-generated on $HOSTNAME
         version_added: "0.9"
+        deprecated:
+            why: This is not flexible enough to meet all needs and adds a lot of complexity and attack surface to this action.
+            alternatives: Use the M(community.crypto.openssh_keypair) action.
+            removed_in: '2.22'
     ssh_key_passphrase:
         description:
             - Set a passphrase for the SSH key.
             - If no passphrase is provided, the SSH key will default to having no passphrase.
         type: str
         version_added: "0.9"
+        deprecated:
+            why: This is not flexible enough to meet all needs and adds a lot of complexity and attack surface to this action.
+            alternatives: Use the M(community.crypto.openssh_keypair) action.
+            removed_in: '2.22'
     update_password:
         description:
             - V(always) will update passwords if they differ.
@@ -453,11 +477,19 @@ ssh_fingerprint:
   returned: When O(generate_ssh_key) is V(True)
   type: str
   sample: '2048 SHA256:aYNHYcyVm87Igh0IMEDMbvW0QDlRQfE0aJugp684ko8 ansible-generated on host (RSA)'
+  deprecated:
+    why: We are removing key generation from the user action.
+    alternatives: Use the M(community.crypto.openssh_keypair) action.
+    removed_in_version: '2.22'
 ssh_key_file:
   description: Path to generated SSH private key file.
   returned: When O(generate_ssh_key) is V(True)
   type: str
   sample: /home/asmith/.ssh/id_rsa
+  deprecated:
+    why: We are removing key generation from the user action.
+    alternatives: Use the M(community.crypto.openssh_keypair) action.
+    removed_in_version: '2.22'
 ssh_public_key:
   description: Generated SSH public key file.
   returned: When O(generate_ssh_key) is V(True)
@@ -466,6 +498,10 @@ ssh_public_key:
     'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC95opt4SPEC06tOYsJQJIuN23BbLMGmYo8ysVZQc4h2DZE9ugbjWWGS1/pweUGjVstgzMkBEeBCByaEf/RJKNecKRPeGd2Bw9DCj/bn5Z6rGfNENKBmo
     618mUJBvdlEgea96QGjOwSB7/gmonduC7gsWDMNcOdSE3wJMTim4lddiBx4RgC9yXsJ6Tkz9BHD73MXPpT5ETnse+A3fw3IGVSjaueVnlUyUmOBf7fzmZbhlFVXf2Zi2rFTXqvbdGHKkzpw1U8eB8xFPP7y
     d5u1u0e6Acju/8aZ/l17IDFiLke5IzlqIMRTEbDwLNeO84YQKWTm9fODHzhYe0yvxqLiK07 ansible-generated on host'
+  deprecated:
+    why: We are removing key generation from the user action.
+    alternatives: Use the M(community.crypto.openssh_keypair) action.
+    removed_in_version: '2.22'
 stderr:
   description: Standard error from running commands.
   returned: When stderr is returned by a command that is run
@@ -3268,12 +3304,12 @@ def main():
             move_home=dict(type='bool', default=False),
             append=dict(type='bool', default=False),
             # following are specific to ssh key generation
-            generate_ssh_key=dict(type='bool'),
-            ssh_key_bits=dict(type='int', default=ssh_defaults['bits']),
-            ssh_key_type=dict(type='str', default=ssh_defaults['type']),
-            ssh_key_file=dict(type='path'),
-            ssh_key_comment=dict(type='str', default=ssh_defaults['comment']),
-            ssh_key_passphrase=dict(type='str', no_log=True),
+            generate_ssh_key=dict(type='bool', removed_in_version='2.22'),
+            ssh_key_bits=dict(type='int', default=ssh_defaults['bits'], removed_in_version='2.22'),
+            ssh_key_type=dict(type='str', default=ssh_defaults['type'], removed_in_version='2.22'),
+            ssh_key_file=dict(type='path', removed_in_version='2.22'),
+            ssh_key_comment=dict(type='str', default=ssh_defaults['comment'], removed_in_version='2.22'),
+            ssh_key_passphrase=dict(type='str', no_log=True, removed_in_version='2.22'),
             update_password=dict(type='str', default='always', choices=['always', 'on_create'], no_log=False),
             expires=dict(type='float'),
             password_lock=dict(type='bool', no_log=False),

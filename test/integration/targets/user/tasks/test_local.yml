@@ -9,8 +9,6 @@
     path: /etc/gshadow
     state: touch
   when: ansible_facts.os_family == 'Suse'
-  tags:
-    - user_test_local_mode
 
 - name: Create /etc/libuser.conf
   file:
@@ -19,8 +17,6 @@
   when:
     - ansible_facts.distribution == 'Ubuntu'
     - ansible_facts.distribution_major_version is version_compare('16', '==')
-  tags:
-    - user_test_local_mode
 
 - name: Ensure luseradd is present
   action: "{{ ansible_facts.pkg_mgr }}"
@@ -28,16 +24,12 @@
     name: libuser
     state: present
   when: ansible_facts.system in ['Linux']
-  tags:
-    - user_test_local_mode
 
 - name: Create local account that already exists to check for warning
   user:
     name: root
     local: yes
   register: local_existing
-  tags:
-    - user_test_local_mode
 
 - name: Create local_ansibulluser
   user:
@@ -45,8 +37,6 @@
     state: present
     local: yes
   register: local_user_test_1
-  tags:
-    - user_test_local_mode
 
 - name: Create local_ansibulluser again
   user:
@@ -54,8 +44,6 @@
     state: present
     local: yes
   register: local_user_test_2
-  tags:
-    - user_test_local_mode
 
 - name: Remove local_ansibulluser
   user:
@@ -64,8 +52,6 @@
     remove: yes
     local: yes
   register: local_user_test_remove_1
-  tags:
-    - user_test_local_mode
 
 - name: Remove local_ansibulluser again
   user:
@@ -74,8 +60,6 @@
     remove: yes
     local: yes
   register: local_user_test_remove_2
-  tags:
-    - user_test_local_mode
 
 - name: Create test groups
   group:
@@ -88,8 +72,6 @@
     - testgroup5
     - testgroup6
     - local_ansibulluser
-  tags:
-    - user_test_local_mode
   register: test_groups
 
 - name: Create local_ansibulluser with groups
@@ -100,8 +82,6 @@
     groups: ['testgroup1', 'testgroup2']
   register: local_user_test_3
   ignore_errors: yes
-  tags:
-    - user_test_local_mode
 
 - name: Append groups for local_ansibulluser
   user:
@@ -112,8 +92,6 @@
     append: yes
   register: local_user_test_4
   ignore_errors: yes
-  tags:
-    - user_test_local_mode
 
 - name: Append groups for local_ansibulluser (again)
   user:
@@ -124,8 +102,6 @@
     append: yes
   register: local_user_test_4_again
   ignore_errors: yes
-  tags:
-    - user_test_local_mode
 
 - name: Test append without groups for local_ansibulluser
   user:
@@ -134,8 +110,6 @@
     append: yes
   register: local_user_test_5
   ignore_errors: yes
-  tags:
-    - user_test_local_mode
 
 - name: Assign named group for local_ansibulluser
   user:
@@ -144,8 +118,6 @@
     local: yes
     group: testgroup5
   register: local_user_test_6
-  tags:
-    - user_test_local_mode
 
 - name: Append groups for local_ansibulluser using group id
   user:
@@ -155,8 +127,6 @@
     groups: "{{ test_groups.results[5]['gid'] }}"
   register: local_user_test_7
   ignore_errors: yes
-  tags:
-    - user_test_local_mode
 
 - name: Append groups for local_ansibulluser using gid (again)
   user:
@@ -166,8 +136,6 @@
     groups: "{{ test_groups.results[5]['gid'] }}"
   register: local_user_test_7_again
   ignore_errors: yes
-  tags:
-    - user_test_local_mode
 
 # If we don't re-assign, then "Set user expiration" will
 # fail.
@@ -178,8 +146,6 @@
     local: yes
     group: local_ansibulluser
   ignore_errors: yes
-  tags:
-    - user_test_local_mode
 
 - name: Remove local_ansibulluser again
   user:
@@ -187,8 +153,6 @@
     state: absent
     remove: yes
     local: yes
-  tags:
-    - user_test_local_mode
 
 - name: Remove test groups
   group:
@@ -202,8 +166,6 @@
     - testgroup5
     - testgroup6
     - local_ansibulluser
-  tags:
-    - user_test_local_mode
 
 - name: Ensure local user accounts were created and removed properly
   assert:
@@ -218,8 +180,6 @@
       - local_user_test_7_again is not changed
       - local_user_test_remove_1 is changed
       - local_user_test_remove_2 is not changed
-  tags:
-    - user_test_local_mode
 
 - name: Ensure warnings were displayed properly
   assert:
@@ -227,8 +187,6 @@
       - local_user_test_5['warnings'] is search("'append' is set, but no 'groups' are specified. Use 'groups'")
       - local_existing['warnings'] is not defined
   when: ansible_facts.system in ['Linux']
-  tags:
-    - user_test_local_mode
 
 - name: Test expires for local users
   import_tasks: test_local_expires.yml
