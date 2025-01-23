@@ -132,6 +132,10 @@ class PlaybookExecutor:
 
                     # Allow variables to be used in vars_prompt fields.
                     all_vars = self._variable_manager.get_vars(play=play)
+                    # remove play special vars since it is too early for correct value
+                    remove_keys = ['play_hosts', 'ansilbe_play_batch'] + [k for k in all_vars.keys() if k.startswith('ansible_') and  k.endswith(('_hosts', '_role_names'))]
+                    for nope in remove_keys:
+                        all_vars.pop(nope, None)
                     templar = Templar(loader=self._loader, variables=all_vars)
                     setattr(play, 'vars_prompt', templar.template(play.vars_prompt))
 
