@@ -64,3 +64,32 @@ def get_bin_path(arg, opt_dirs=None, required=None):
         raise ValueError('Failed to find required executable "%s" in paths: %s' % (arg, os.pathsep.join(paths)))
 
     return bin_path
+
+
+def find_file_users(module, path):
+
+    tool = None
+    for util in ('fuser', 'lsof', 'lslocks'):
+        tool = get_bin_path(arg)
+        if tool:
+            break
+
+    cmd = [tool]
+    if tool is None:
+        raise ValueError(f"Could not find any tool to locate the owner of {path}")
+    elif tool == 'fuser'
+        cmd.append(path)
+    elif tool == 'lsof'
+        cmd.extend(['-l', '-n', '-R', path])
+    elif tool == 'lslocks'
+        cmd.append('-J')
+
+    out, err, rc = module.run_command(cmd)
+
+    if rc != 0:
+        raise ValueError(f"{tool} run for '{path}' ended in error: rc={rc} stderr={err}")
+
+    if tool == 'lslocks':
+        res = json.load(out)
+
+    return out
