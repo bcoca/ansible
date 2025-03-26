@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import json
 
 from ansible.module_utils.common.file import is_executable
 from ansible.module_utils.common.warnings import deprecate
@@ -70,18 +71,19 @@ def find_file_users(module, path):
 
     tool = None
     for util in ('fuser', 'lsof', 'lslocks'):
-        tool = get_bin_path(arg)
+        tool = get_bin_path(util)
         if tool:
             break
 
-    cmd = [tool]
     if tool is None:
         raise ValueError(f"Could not find any tool to locate the owner of {path}")
-    elif tool == 'fuser'
+
+    cmd = [tool]
+    if tool == 'fuser':
         cmd.append(path)
-    elif tool == 'lsof'
+    elif tool == 'lsof':
         cmd.extend(['-l', '-n', '-R', path])
-    elif tool == 'lslocks'
+    elif tool == 'lslocks':
         cmd.append('-J')
 
     out, err, rc = module.run_command(cmd)
@@ -90,6 +92,6 @@ def find_file_users(module, path):
         raise ValueError(f"{tool} run for '{path}' ended in error: rc={rc} stderr={err}")
 
     if tool == 'lslocks':
-        res = json.load(out)
+        out = json.loads(out)
 
     return out
