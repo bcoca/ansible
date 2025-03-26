@@ -69,7 +69,6 @@ def get_bin_path(arg, opt_dirs=None, required=None):
 
 def find_file_users(module, path):
 
-    tool = None
     for util in ('fuser', 'lsof', 'lslocks'):
         tool = get_bin_path(util)
         if tool:
