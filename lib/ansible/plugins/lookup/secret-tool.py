@@ -1,0 +1,1 @@
+/home/bcoca/work/collections/ansible_collections/bcoca/misc/plugins/lookup/secret-tool.py
