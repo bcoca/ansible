@@ -30,3 +30,8 @@ ansible-playbook ansible_no_log_in_result.yml -vvvvv > "${OUTPUT_DIR}/output.log
 [ "$(ansible-playbook no_log_config.yml -i ../../inventory -vvvvv "$@" | grep -Ec 'the output has been hidden')" = "1" ]
 [ "$(ANSIBLE_NO_LOG=0 ansible-playbook no_log_config.yml -i ../../inventory -vvvvv "$@" | grep -Ec 'the output has been hidden')" = "1" ]
 [ "$(ANSIBLE_NO_LOG=1 ansible-playbook no_log_config.yml -i ../../inventory -vvvvv "$@" | grep -Ec 'the output has been hidden')" = "5" ]
+
+# ensure we dont disclose secrets on error
+[ "$(ansible-playbook secrets_on_error.yml -i ../../inventory -vvvvv "$@" | grep -Ec 'SECRET')" = "0" ]
+# ensure we do show on debug disclose secrets on error
+[ "$(ANSIBLE_DEBUG=1 ansible-playbook secrets_on_error.yml -i ../../inventory -vvvvv "$@" | grep -Ec 'SECRET')" != "0" ]

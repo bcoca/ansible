@@ -1,0 +1,2 @@
+bugfixes:
+  - no_log properly applies to task's error messages

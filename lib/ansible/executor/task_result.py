@@ -20,7 +20,8 @@ if t.TYPE_CHECKING:
     from ansible.playbook.task import Task
 
 _IGNORE = ('failed', 'skipped')
-_PRESERVE = {'attempts', 'changed', 'retries', '_ansible_no_log', 'exception', 'warnings', 'deprecations'}
+_PRESERVE = {'attempts', 'changed', 'retries', '_ansible_no_log'}
+_DEBUG_PRESERVE = {'exception', 'warnings', 'deprecations'}
 _SUB_PRESERVE = {'_ansible_delegated_vars': {'ansible_host', 'ansible_port', 'ansible_user', 'ansible_connection'}}
 
 # stuff callbacks need
@@ -250,7 +251,12 @@ TaskResult = CallbackTaskResult
 
 
 def censor_result(result: _c.Mapping[str, t.Any]) -> dict[str, t.Any]:
-    censored_result = {key: value for key in _PRESERVE if (value := result.get(key, ...)) is not ...}
+
+    safe = _PRESERVE
+    if constants.DEFAULT_DEBUG:
+        safe.update(_DEBUG_PRESERVE)
+
+    censored_result = {key: value for key in safe if (value := result.get(key, ...)) is not ...}
     censored_result.update(censored="the output has been hidden due to the fact that 'no_log: true' was specified for this result")
 
     return censored_result
