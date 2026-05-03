@@ -20,6 +20,7 @@
         repo: "{{ test_ppa_name }}"
         filename: "{{ test_source_filename }}"
         update_cache: false
+      ignore_errors: true
       register: add_ppa
 
     - name: verify the expected test source was added

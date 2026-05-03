@@ -184,11 +184,11 @@ import time
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.common.file import S_IRWU_RG_RO as DEFAULT_SOURCES_PERM
+from ansible.module_utils.common.locale import get_best_parsable_locale
 from ansible.module_utils.common.respawn import has_respawned, probe_interpreters_for_module, respawn_module
 from ansible.module_utils.common.text.converters import to_native
 from ansible.module_utils.urls import fetch_url, is_fetch_success
 
-from ansible.module_utils.common.locale import get_best_parsable_locale
 
 try:
     import apt
@@ -333,7 +333,7 @@ class SourcesList(object):
                     os.makedirs(d)
                 except OSError as ex:
                     if not os.path.isdir(d):
-                        self.module.fail_json("Failed to create directory %s: %s" % (d, to_native(ex)))
+                        self.module.fail_json(msg="Failed to create directory %s: %s" % (d, to_native(ex)))
 
                 try:
                     fd, tmp_path = tempfile.mkstemp(prefix=".%s-" % fn, dir=d)
@@ -448,6 +448,7 @@ class UbuntuSourcesList(SourcesList):
     # see: https://github.com/ansible/ansible/pull/81978#issuecomment-1767062178
     LP_API = 'https://api.launchpad.net/1.0/~%s/+archive/%s'
     PPA_URI = 'https://ppa.launchpadcontent.net'
+    KEYSERVER = 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x'
 
     def __init__(self, module):
         self.module = module
@@ -456,11 +457,11 @@ class UbuntuSourcesList(SourcesList):
 
         self.apt_key_bin = self.module.get_bin_path('apt-key', required=False)
         self.gpg_bin = self.module.get_bin_path('gpg', required=False)
+
         if not self.apt_key_bin and not self.gpg_bin:
-            msg = 'Either apt-key or gpg binary is required, but neither could be found.' \
-                  'The apt-key CLI has been deprecated and removed in modern Debian and derivatives, ' \
-                  'you might want to use "deb822_repository" instead.'
-            self.module.fail_json(msg)
+            self.module.fail_json(msg='Either apt-key or gpg binary is required, but neither could be found.'
+                                  'The apt-key CLI has been deprecated and removed in modern Debian and derivatives, '
+                                  'you might want to use the "deb822_repository" action instead.')
 
     def __deepcopy__(self, memo=None):
         return UbuntuSourcesList(self.module)
@@ -471,7 +472,7 @@ class UbuntuSourcesList(SourcesList):
         headers = dict(Accept='application/json')
         response, info = fetch_url(self.module, lp_api, headers=headers)
         if not is_fetch_success(info):
-            self.module.fail_json(msg="failed to fetch PPA information, error was: %s" % info['msg'])
+            self.module.fail_json(msg=f"failed to fetch PPA information from {lp_api}, error was: {info['msg']}")
         return json.loads(to_native(response.read()))
 
     def _expand_ppa(self, path):
@@ -521,7 +522,8 @@ class UbuntuSourcesList(SourcesList):
 
         return found
 
-    # https://www.linuxuprising.com/2021/01/apt-key-is-deprecated-how-to-add.html
+    # https://www.linuxuprising.com/2021/01/apt-key-is-deprecated-how-to-add.html,
+    # also the use of gpg keyserver option and dirmngr, so we fetch the key ourselves
     def add_source(self, line, comment='', file=None):
         if line.startswith('ppa:'):
             source, ppa_owner, ppa_name = self._expand_ppa(line)
@@ -535,34 +537,33 @@ class UbuntuSourcesList(SourcesList):
             # add gpg sig if needed
             if not self._key_already_exists(info['signing_key_fingerprint']):
 
-                # TODO: report file that would have been added if not check_mode
-                keyfile = ''
                 if not self.module.check_mode:
                     if self.apt_key_bin:
                         command = [self.apt_key_bin, 'adv', '--recv-keys', '--no-tty', '--keyserver', 'hkp://keyserver.ubuntu.com:80',
                                    info['signing_key_fingerprint']]
+                        rc, stdout, stderr = self.module.run_command(command, check_rc=True, encoding=None)
                     else:
                         # use first available key dir, in order of preference
                         for keydir in APT_KEY_DIRS:
                             if os.path.exists(keydir):
                                 break
                         else:
-                            self.module.fail_json("Unable to find any existing apt gpgp repo directories, tried the following: %s" % ', '.join(APT_KEY_DIRS))
+                            self.module.fail_json(msg="Unable to find any existing apt gpg repo directories, tried the following: %s" % ', '.join(APT_KEY_DIRS))
 
-                        keyfile = '%s/%s-%s-%s.gpg' % (keydir, os.path.basename(source).replace(' ', '-'), ppa_owner, ppa_name)
-                        command = [self.gpg_bin, '--no-tty', '--keyserver', 'hkp://keyserver.ubuntu.com:80', '--export', info['signing_key_fingerprint']]
+                        # download key from keyserver
+                        gpg_response, gpg_info = fetch_url(self.module, f"{self.KEYSERVER}{info['signing_key_fingerprint']}")
+                        if not is_fetch_success(gpg_info):
+                            self.module.fail_json(msg=f"failed to fetch the gpg key from the keyserver: {gpg_info['msg']}.")
 
-                    rc, stdout, stderr = self.module.run_command(command, check_rc=True, encoding=None)
-                    if keyfile:
-                        # using gpg we must write keyfile ourselves
-                        if len(stdout) == 0:
-                            self.module.fail_json(msg='Unable to get required signing key', rc=rc, stderr=stderr, command=command)
-                        try:
-                            with open(keyfile, 'wb') as f:
-                                f.write(stdout)
-                            self.module.log('Added repo key "%s" for apt to file "%s"' % (info['signing_key_fingerprint'], keyfile))
-                        except OSError as ex:
-                            self.module.fail_json(msg='Unable to add required signing key.', rc=rc, stderr=stderr, error=str(ex), exception=ex)
+                        # now use gpg do dearmor and output into place
+                        armored_key = gpg_response.read()
+                        keyfile = f'{keydir}/{os.path.basename(source).replace(' ', '-')}-{ppa_owner}-{ppa_name}.gpg'
+                        command = [self.gpg_bin, '--no-tty', '--batch', '--yes', '--dearmor', '-o', keyfile]
+                        rc, stdout, stderr = self.module.run_command(command, data=armored_key, binary_data=True, check_rc=True, encoding=None)
+
+                        if rc != 0:
+                            self.module.fail_json(msg=f'Unable to add required signing key to {keyfile}.', rc=rc, stderr=stderr, stdout=stdout, k=str(armored_key))
+                        self.module.log(f'Added repo key "{info['signing_key_fingerprint']}" for apt to file {keyfile}.')
 
             # apt source file
             file = file or self._suggest_filename('%s_%s' % (line, self.codename))
@@ -750,11 +751,7 @@ def main():
                     module.warn(f"Sleeping for {int(round(delay))} seconds, before attempting to update the cache again")
                 else:
                     revert_sources_list(sources_before, sources_after, sourceslist_before)
-                    msg = (
-                        f"Failed to update apt cache after {update_cache_retries} retries: "
-                        f"{err if err else 'unknown reason'}"
-                    )
-                    module.fail_json(msg=msg)
+                    module.fail_json(msg=f"Failed to update apt cache after {update_cache_retries} retries: {err if err else 'unknown reason'}")
 
         except OSError as ex:
             revert_sources_list(sources_before, sources_after, sourceslist_before)
