@@ -18,10 +18,8 @@ import time
 import syslog
 import multiprocessing
 
-from ansible.module_utils.common.text.converters import to_text, to_bytes
-
-syslog.openlog('ansible-%s' % os.path.basename(__file__))
-syslog.syslog(syslog.LOG_NOTICE, 'Invoked with %s' % " ".join(sys.argv[1:]))
+syslog.openlog(f'ansible-{os.path.basename(__file__)}')
+syslog.syslog(syslog.LOG_NOTICE, f'Invoked with {" ".join(sys.argv[1:])}')
 
 # pipe for communication between forked process and parent
 ipc_watcher, ipc_notifier = multiprocessing.Pipe()
@@ -49,7 +47,7 @@ def daemonize_self():
             end()
     except OSError:
         e = sys.exc_info()[1]
-        end({'msg': "fork #1 failed: %d (%s)\n" % (e.errno, e.strerror), 'failed': True}, 1)
+        end({'msg': f"fork #1 failed: {e.errno} ({e.strerror})\n", 'failed': True}, 1)
 
     # decouple from parent environment (does not chdir / to keep the directory context the same as for non async tasks)
     os.setsid()
@@ -63,7 +61,7 @@ def daemonize_self():
             end()
     except OSError:
         e = sys.exc_info()[1]
-        end({'msg': "fork #2 failed: %d (%s)\n" % (e.errno, e.strerror), 'failed': True}, 1)
+        end({'msg': f"fork #2 failed: {e.errno} (e.strerror)\n", 'failed': True}, 1)
 
     dev_null = open('/dev/null', 'w')
     os.dup2(dev_null.fileno(), sys.stdin.fileno())
@@ -88,7 +86,7 @@ def _filter_non_json_lines(data):
 
     for start, line in enumerate(lines):
         line = line.strip()
-        if line.startswith(u'{'):
+        if line.startswith('{'):
             break
     else:
         raise ValueError('No start of json char found')
@@ -97,7 +95,7 @@ def _filter_non_json_lines(data):
     lines = lines[start:]
 
     for reverse_end_offset, line in enumerate(reversed(lines)):
-        if line.strip().endswith(u'}'):
+        if line.strip().endswith('}'):
             break
     else:
         raise ValueError('No end of json char found')
@@ -108,7 +106,7 @@ def _filter_non_json_lines(data):
         trailing_junk = lines[len(lines) - reverse_end_offset:]
         for line in trailing_junk:
             if line.strip():
-                warnings.append('Module invocation had junk after the JSON data: %s' % '\n'.join(trailing_junk))
+                warnings.append(f'Module invocation had junk after the JSON data: {"\n".join(trailing_junk)}')
                 break
 
     lines = lines[:(len(lines) - reverse_end_offset)]
@@ -146,7 +144,7 @@ def _run_module(jid, *module_args):
     filtered_outdata = ''
     stderr = ''
     try:
-        cmd = [to_bytes(a) for a in module_args]
+        cmd = [(a).encode() for a in module_args]
 
         script = subprocess.Popen(
             cmd,
@@ -185,7 +183,7 @@ def _run_module(jid, *module_args):
         result = {
             "failed": True,
             "cmd": shlex.join(module_args),
-            "msg": to_text(e),
+            "msg": f"{e}",
             "outdata": outdata,  # temporary notice only
             "stderr": stderr
         }
@@ -232,8 +230,8 @@ def main():
     except Exception as e:
         end({
             "failed": True,
-            "msg": "could not create directory: %s - %s" % (jobdir, to_text(e)),
-            "exception": to_text(traceback.format_exc()),  # NB: task executor compat will coerce to the correct dataclass type
+            "msg": f"could not create directory: {jobdir} - {e}",
+            "exception": f"{traceback.format_exc()}",
         }, 1)
 
     # immediately exit this process, leaving an orphaned process
@@ -290,7 +288,7 @@ def main():
                 # set the child process group id to kill all children
                 os.setpgid(sub_pid, sub_pid)
 
-                notice("Start watching %s (%s)" % (sub_pid, remaining))
+                notice(f"Start watching {sub_pid} ({remaining})")
 
                 if remaining != 0 and step >= remaining:
                     step = remaining / 2
@@ -299,12 +297,12 @@ def main():
 
                 while os.waitpid(sub_pid, os.WNOHANG) == (0, 0):
                     remaining = remaining - step
-                    notice("%s still running (%s)" % (sub_pid, remaining))
+                    notice(f"{sub_pid} still running ({remaining})")
                     if remaining <= 0:
                         # actually kill it
-                        notice("Timeout reached, now killing %s" % (sub_pid))
+                        notice(f"Timeout reached, now killing {sub_pid}")
                         os.killpg(sub_pid, signal.SIGKILL)
-                        notice("Sent kill to group %s " % sub_pid)
+                        notice(f"Sent kill to group {sub_pid}")
                         time.sleep(1)
 
                         # ensure we leave response in poll location
@@ -322,13 +320,13 @@ def main():
                 end()
             else:
                 # the child process runs the actual module
-                notice("Start module (%s)" % os.getpid())
+                notice(f"Start module ({os.getpid()}")
                 _run_module(jid, *invocation_args)
-                notice("Module complete (%s)" % os.getpid())
+                notice(f"Module complete {os.getpid()}")
 
     except Exception as e:
-        notice("error: %s" % e)
-        end({"failed": True, "msg": "FATAL ERROR: %s" % e}, "async_wrapper exited prematurely")
+        notice(f"error: {e}")
+        end({"failed": True, "msg": f"FATAL ERROR: {e}"}, "async_wrapper exited prematurely")
 
 
 if __name__ == '__main__':
